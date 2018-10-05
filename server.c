@@ -45,24 +45,24 @@ typedef struct LeaderBoard
 	player_t *players[10];
 };
 
-struct GameState gameState;
-struct LeaderBoard leaderBoard;
-
 typedef struct GameState
 {
 	Tile tiles[NUM_TILES_X][NUM_TILES_Y];
 };
 
+struct GameState gameState;
+struct LeaderBoard leaderBoard;
+
+
 player_t* getPlayer(char* name) {
 	for (int i = 0; i < 10; ++i)
 	{
-		printf("%s\n", leaderBoard.players[i]->name);
 		if (leaderBoard.players[i]->name == name)
 		{
-			printf("HERE 2\n");
 			return leaderBoard.players[i];
 		}
 	}
+	return NULL;
 }
 
 
@@ -115,11 +115,23 @@ void place_mines() {
 }
 
 void show_board() {
+	char* vertical = "ABCDEFGHI";
+	printf("Remaining mines: %d\n", 10);
+	printf("\n");
+	printf("    1 2 3 4 5 6 7 8 9\n");
+	printf("  -------------------\n");
 	for (int i = 0; i < NUM_TILES_Y; ++i)
 	{
+		printf("%c | ", vertical[i]);
 		for (int j = 0; j < NUM_TILES_X; ++j)
 		{
-			printf("%d ", gameState.tiles[i][j].isMine);
+			if (tile_contains_mine(i, j))
+			{
+				printf("* ");
+			} else {
+				printf("  ");
+			}
+			// printf("%d ", gameState.tiles[i][j].isMine);
 		}
 		printf("\n");
 	}
@@ -157,6 +169,11 @@ void add_score(char* name, int time) {
 	if (time > current->time)
 	{
 		leaderBoard.head = malloc(sizeof(score_t));
+		if (leaderBoard.head == NULL)
+		{
+			printf("%s\n", "Error");
+			return;
+		}
 		leaderBoard.head->name = name;
 		leaderBoard.head->time = time;
 		leaderBoard.head->next = current;
@@ -170,6 +187,11 @@ void add_score(char* name, int time) {
 	score_t *next = current->next;
 
 	current->next = malloc(sizeof(score_t));
+	if (leaderBoard.head == NULL)
+	{
+		printf("%s\n", "Error");
+		return;
+	}
 	current->next->name = name;
 	current->next->time = time;
 	current->next->next = next;
@@ -193,6 +215,17 @@ void show_leaderboard() {
 
 
 void setup_players() {
+
+	leaderBoard.players[0] = malloc(sizeof(player_t));
+	leaderBoard.players[0]->name = "Maolin";
+	leaderBoard.players[0]->password = "111111";
+	leaderBoard.players[0]->gamesWon = 0;
+	leaderBoard.players[0]->gamesPlayed = 0;
+
+	return;
+
+
+
 	FILE *fp;
 	char buff[255];
 
@@ -208,7 +241,7 @@ void setup_players() {
    		char passwordBuff[255];
    		fscanf(fp, "%s", nameBuff);
 
-   		char blah = nameBuff
+   		// char blah = nameBuff;
 
 
 
