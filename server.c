@@ -1,14 +1,22 @@
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <string.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h> 
 #include <unistd.h>
 #include "server.h"
+
+
+#define ARRAY_SIZE 10  /* Size of array to receive */
+#define BACKLOG 10     /* how many pending connections queue will hold */
+#define RETURNED_ERROR -1
+#define TERMINATE_CONNECTION 65535
 
 #define RANDOM_NUMBER_SEED 42
 #define NUM_TILES_X 9
