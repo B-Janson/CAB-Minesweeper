@@ -8,7 +8,7 @@
 #include <sys/socket.h> 
 #include <unistd.h>
 
-#define MAXDATASIZE 100 /* max number of bytes we can get at once */
+#define MAXDATASIZE 50 /* max number of bytes we can get at once */
 #define ARRAY_SIZE 10
 #define RETURNED_ERROR -1
 
@@ -41,16 +41,30 @@ void Send_Int_Array(int socket_id, int *myArray) {
 	}
 }
 
-void Send_String(int socket_id, char message[], int length) {
-	printf("Socket ID: %d, message: %s, Length: %d\n", socket_id, message, length);
-	if (send(socket_id, message, length, 0) == -1) {
+void Send_String(int socket_id, char message[], int length, char outputBuf[]) {
+	// printf("Send_String Socket ID: %d, message: %s, Length: %d\n", socket_id, message, length);
+	int numbytes = 0;
+	// char outputBuf[MAXDATASIZE];
+
+	if (send(socket_id, message, MAXDATASIZE, 0) == -1) {
 		perror("send");
 	}
+
+	/* Receive message back from server */
+	if ((numbytes = recv(socket_id, outputBuf, MAXDATASIZE, 0)) == -1) {
+		perror("recv");
+		exit(1);
+	}
+
+	outputBuf[numbytes] = '\0';
+
+	// printf("%s\n", outputBuf);
 }
 
 int main(int argc, char *argv[]) {
-	int sockfd, numbytes;  
-	char buf[50];
+	int socket_id; 
+	char inputBuff[MAXDATASIZE];
+	char outputBuf[MAXDATASIZE];
 	struct hostent *he;
 	struct sockaddr_in their_addr; /* connector's address information */
 
@@ -64,7 +78,7 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+	if ((socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("socket");
 		exit(1);
 	}
@@ -74,7 +88,7 @@ int main(int argc, char *argv[]) {
 	their_addr.sin_addr = *((struct in_addr *)he->h_addr);
 	bzero(&(their_addr.sin_zero), 8);     /* zero the rest of the struct */
 
-	if (connect(sockfd, (struct sockaddr *)&their_addr, sizeof(struct sockaddr)) == -1) {
+	if (connect(socket_id, (struct sockaddr *)&their_addr, sizeof(struct sockaddr)) == -1) {
 		printf("FAIL\n");
 		perror("connect");
 		exit(1);
@@ -88,59 +102,52 @@ int main(int argc, char *argv[]) {
 
 	printf("You are required to log on with your registered user name and password.\n\n");
 	printf("Username: ");
-	scanf("%s", buf);
-	Send_String(sockfd, buf, strlen(buf));
-	// buf = "";
+	scanf("%s", inputBuff);
+	Send_String(socket_id, inputBuff, strlen(inputBuff), outputBuf);
 
 	printf("Password: ");
-	scanf("%s", buf);
-	Send_String(sockfd, buf, strlen(buf));
+	scanf("%s", inputBuff);
+	Send_String(socket_id, inputBuff, strlen(inputBuff), outputBuf);
 
-	int simpleArray[10] = {0};
-	simpleArray[0] = 34;
-	simpleArray[1] = 69;
-	simpleArray[4] = 420;
-	simpleArray[8] = 88;
+	if (strncmp(outputBuf, "0", 10) == 0) {
+		running = 0;
+		printf("You entered either an incorrect username or password. Disconnecting.\n");
+	} else {
+		printf("Welcome to the Minesweeper gaming system.\n\n");
+		printf("Please enter a selection:\n");
+		printf("<1> Play Minesweeper\n");
+		printf("<2> Show Leaderboard\n");
+		printf("<3> Quit\n\n");
+		printf("Selection option (1-3): ");
+		scanf("%s", inputBuff);
+		printf("\n");
 
-	Send_Int_Array(sockfd, simpleArray);
-
-	running = 0;
-
-	while (running) {
-		printf("HERE\n");
-		int simpleArray[ARRAY_SIZE] = {0};
-		for (int i = 0; i < ARRAY_SIZE; i++) {
-			printf("Enter number to send: (%d/%d) ", i + 1, ARRAY_SIZE);
-			int input;
-			scanf("%d", &input);
-			simpleArray[i] = input;
-
-			if (input == -1) {
-				printf("Killing client.\n");
-				running = 0;
-				Send_Int_Array(sockfd, simpleArray);
-				break;
-			}
+		if (strncmp(inputBuff, "1", 10) == 0) {
+			printf("You have chosen to play.\n");
 		}
 
-		if (running) {
-			Send_Int_Array(sockfd, simpleArray);
+		if (strncmp(inputBuff, "2", 10) == 0) {
+			printf("You have chosen to view Leaderboard.\n");
+		}
 
-			/* Receive message back from server */
-			if ((numbytes = recv(sockfd, buf, MAXDATASIZE, 0)) == -1) {
-				perror("recv");
-				exit(1);
-			}
-
-			buf[numbytes] = '\0';
-
-			buf[numbytes] = '\0';
-
-			printf("Received: %s",buf);
+		if (strncmp(inputBuff, "3", 10) == 0) {
+			printf("You have chosen to quit.\n");
 		}
 	}
 
-	close(sockfd);
+	while (running) {
+		printf("ENTER SOMETHING TO SEND: ");
+		scanf("%s", inputBuff);
+
+		if (strncmp(inputBuff, "-1", MAXDATASIZE) == 0) {
+			running = 0;
+		}
+
+		Send_String(socket_id, inputBuff, strlen(inputBuff), outputBuf);
+		
+	}
+
+	close(socket_id);
 
 	return 0;
 }
