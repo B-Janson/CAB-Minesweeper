@@ -3,7 +3,6 @@
 *  Collected and modified for teaching purpose only by Jinglan Zhang, Aug. 2006
 */
 
-
 #include <arpa/inet.h>
 #include <stdio.h> 
 #include <stdlib.h> 
@@ -129,8 +128,6 @@ void Run_Thread(int socket_id) {
 	player_t *curr_player = malloc(sizeof(player_t));
 	curr_player->name = malloc(sizeof(char) * limit);
 	curr_player->pass = malloc(sizeof(char) * limit);
-
-
 
 	Receive_String(socket_id, curr_player->name);
 

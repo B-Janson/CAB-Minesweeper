@@ -112,6 +112,27 @@ int main(int argc, char *argv[]) {
 	if (strncmp(outputBuf, "0", 10) == 0) {
 		running = 0;
 		printf("You entered either an incorrect username or password. Disconnecting.\n");
+	} else {
+		printf("Welcome to the Minesweeper gaming system.\n\n");
+		printf("Please enter a selection:\n");
+		printf("<1> Play Minesweeper\n");
+		printf("<2> Show Leaderboard\n");
+		printf("<3> Quit\n\n");
+		printf("Selection option (1-3): ");
+		scanf("%s", inputBuff);
+		printf("\n");
+
+		if (strncmp(inputBuff, "1", 10) == 0) {
+			printf("You have chosen to play.\n");
+		}
+
+		if (strncmp(inputBuff, "2", 10) == 0) {
+			printf("You have chosen to view Leaderboard.\n");
+		}
+
+		if (strncmp(inputBuff, "3", 10) == 0) {
+			printf("You have chosen to quit.\n");
+		}
 	}
 
 	while (running) {
