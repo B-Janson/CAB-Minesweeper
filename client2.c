@@ -41,10 +41,10 @@ void Send_Int_Array(int socket_id, int *myArray) {
 	}
 }
 
-void Send_String(int socket_id, char message[], int length) {
+void Send_String(int socket_id, char message[], int length, char outputBuf[]) {
 	// printf("Send_String Socket ID: %d, message: %s, Length: %d\n", socket_id, message, length);
 	int numbytes = 0;
-	char outputBuf[MAXDATASIZE];
+	// char outputBuf[MAXDATASIZE];
 
 	if (send(socket_id, message, MAXDATASIZE, 0) == -1) {
 		perror("send");
@@ -56,7 +56,7 @@ void Send_String(int socket_id, char message[], int length) {
 		exit(1);
 	}
 
-	// outputBuf[numbytes] = '\0';
+	outputBuf[numbytes] = '\0';
 
 	// printf("%s\n", outputBuf);
 }
@@ -64,6 +64,7 @@ void Send_String(int socket_id, char message[], int length) {
 int main(int argc, char *argv[]) {
 	int socket_id; 
 	char inputBuff[MAXDATASIZE];
+	char outputBuf[MAXDATASIZE];
 	struct hostent *he;
 	struct sockaddr_in their_addr; /* connector's address information */
 
@@ -102,17 +103,18 @@ int main(int argc, char *argv[]) {
 	printf("You are required to log on with your registered user name and password.\n\n");
 	printf("Username: ");
 	scanf("%s", inputBuff);
-	Send_String(socket_id, inputBuff, strlen(inputBuff));
-	// buf = "";
+	Send_String(socket_id, inputBuff, strlen(inputBuff), outputBuf);
 
 	printf("Password: ");
 	scanf("%s", inputBuff);
-	Send_String(socket_id, inputBuff, strlen(inputBuff));
+	Send_String(socket_id, inputBuff, strlen(inputBuff), outputBuf);
 
-	// running = 0;
+	if (strncmp(outputBuf, "0", 10) == 0) {
+		running = 0;
+		printf("You entered either an incorrect username or password. Disconnecting.\n");
+	}
 
 	while (running) {
-
 		printf("ENTER SOMETHING TO SEND: ");
 		scanf("%s", inputBuff);
 
@@ -120,7 +122,7 @@ int main(int argc, char *argv[]) {
 			running = 0;
 		}
 
-		Send_String(socket_id, inputBuff, strlen(inputBuff));
+		Send_String(socket_id, inputBuff, strlen(inputBuff), outputBuf);
 		
 	}
 

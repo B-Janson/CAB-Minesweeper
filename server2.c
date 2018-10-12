@@ -15,6 +15,7 @@
 #include <sys/wait.h> 
 #include <unistd.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #define MAXDATASIZE 50 /* max number of bytes we can get at once */
 #define ARRAY_SIZE 10  /* Size of array to receive */
@@ -27,6 +28,32 @@ typedef struct Player
 	char* name;
 	char* pass;
 } player_t;
+
+const char * names[] = {
+    "Maolin",
+    "Jason",
+    "Mike",
+    "Peter",
+    "Justin",
+    "Anna",
+    "Timothy",
+    "Anthony",
+    "Paul",
+    "Richie",
+};
+
+const char * passwords[] = {
+    "111111",
+    "222222",
+    "333333",
+    "444444",
+    "555555",
+    "123123",
+    "155222",
+    "123123",
+    "248273",
+    "993844",
+};
 
 
 void Send_Array_Data(int socket_id) {
@@ -83,7 +110,7 @@ char* Receive_String(int socket_id, char* buf) {
 
 	buf[number_of_bytes] = '\0';
 
-	printf("Received: %s\n", buf);
+	// printf("Received: %s\n", buf);
 
 	if (send(socket_id, "Received (Server)", MAXDATASIZE , 0) == -1) {
 		perror("send");
@@ -103,11 +130,44 @@ void Run_Thread(int socket_id) {
 	curr_player->name = malloc(sizeof(char) * limit);
 	curr_player->pass = malloc(sizeof(char) * limit);
 
-	Receive_String(socket_id, curr_player->name);
-	Receive_String(socket_id, curr_player->pass);
 
-	printf("Player Name: %s\n", curr_player->name);
-	printf("Player Password: %s\n", curr_player->pass);
+
+	Receive_String(socket_id, curr_player->name);
+
+	int number_of_bytes = 0;
+
+	if ((number_of_bytes = recv(socket_id, curr_player->pass, MAXDATASIZE, 0)) == -1) {
+		perror("recv");
+		exit(1);
+	}
+
+	curr_player->pass[number_of_bytes] = '\0';
+
+	// Receive_String(socket_id, curr_player->pass);
+
+	bool isAuthenticated = false;
+
+	char * serverResponse = "1";
+
+	for (int i = 0; i < 10; ++i) {
+		if (strncmp(names[i], curr_player->name, 50) == 0 && strncmp(passwords[i], curr_player->pass, 50) == 0) {
+			isAuthenticated = true;
+			printf("User isAuthenticated\n");
+			break;
+		}
+	}
+
+
+
+	if (!isAuthenticated) {
+		running = 0;
+		serverResponse = "0";
+		printf("Player logged in with wrong credentials.\n");
+	}
+
+	if (send(socket_id, serverResponse, MAXDATASIZE , 0) == -1) {
+		perror("send");
+	}
 
 	while (running) {
 		Receive_String(socket_id, buf);
