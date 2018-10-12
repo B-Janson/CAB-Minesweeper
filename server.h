@@ -1,11 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#define NUM_TILES_X 9
-#define NUM_TILES_Y 9
-#define NUM_MINES 10
-
-typedef struct
+typedef struct Tile
 {
 	int adjacentMines;
 	bool revealed;
@@ -16,8 +12,6 @@ typedef struct GameState
 {
 	Tile tiles[NUM_TILES_X][NUM_TILES_Y];
 } GameState;
-
-
 
 typedef struct Score
 {

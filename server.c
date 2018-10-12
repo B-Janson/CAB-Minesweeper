@@ -13,13 +13,7 @@
 #include <unistd.h>
 #include "server.h"
 
-#define MAXDATASIZE 50 /* max number of bytes we can get at once */
-#define ARRAY_SIZE 10  /* Size of array to receive */
-#define BACKLOG 10     /* how many pending connections queue will hold */
-#define RETURNED_ERROR -1
-#define TERMINATE_CONNECTION 65535
-
-#define RANDOM_NUMBER_SEED 42
+#include "constants.h"
 
 LeaderBoard leaderBoard;
 
@@ -63,7 +57,7 @@ char* Receive_String_And_Reply(int socket_id, char* buf) {
 void Run_Thread(int socket_id) {
 	bool running = true;
 	char inputBuff[MAXDATASIZE];
-	char outputBuff[MAXDATASIZE];
+	char *outputBuff;
 	GameState *gameState = malloc(sizeof(GameState));
 	
 	// This lets the process know that when the thread dies that it should take care of itself.
@@ -73,8 +67,6 @@ void Run_Thread(int socket_id) {
 	srand(RANDOM_NUMBER_SEED);
 
 	bool isAuthenticated = false;
-
-	char * serverResponse = "1";
 
 	// Get the username
 	Receive_String_And_Reply(socket_id, inputBuff);
@@ -90,16 +82,17 @@ void Run_Thread(int socket_id) {
 	// If we found a player with that name AND the password matches, authenticate.
 	if (curr_player != NULL && strncmp(curr_player->password, inputBuff, MAXDATASIZE) == 0) {
 		isAuthenticated = true;
-		printf("User isAuthenticated\n");
+		outputBuff = "1"; // message of 1 means that it was a successful login
+		printf("User is authenticated\n");
 	}
 
 	if (!isAuthenticated) {
 		running = 0;
-		serverResponse = "0";
+		outputBuff = "0";
 		printf("Player logged in with wrong credentials.\n");
 	}
 
-	Send_String(socket_id, serverResponse);
+	Send_String(socket_id, outputBuff);
 
 	// place_mines(gameState);
 	// show_board(gameState);
