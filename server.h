@@ -19,5 +19,7 @@ void addScore(char *name, int time);
 
 void setup_players();
 
+GameState *setupGame();
+
 #endif
 

@@ -54,11 +54,56 @@ char *receiveStringAndReply(int socket_id, char *buf) {
     return buf;
 }
 
-void Run_Thread(int socket_id) {
+void handleGame(int socketID, char inputBuff[]) {
+    printf("User has chosen to play a game.\n");
+    GameState *gameState = setupGame();
+    bool playing = true;
+
+    while (playing) {
+        receiveStringAndReply(socketID, inputBuff);
+
+        printf("User entered: %s\n", inputBuff);
+
+        printf("inputBUff[0] == %c\n", inputBuff[0]);
+        printf("inputBUff[1] == %c\n", inputBuff[1]);
+        printf("inputBuff[2] == %c\n", inputBuff[2]);
+
+
+        if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
+            playing = false;
+            printf("Player wants to exit game\n");
+        } else if (inputBuff[2] == 'R') {
+            printf("IS THIS FUCKED?\n");
+            char y = inputBuff[0];
+            char x = inputBuff[1];
+            printf("MADE IN HERE\n");
+            printf("User wants to reveal tile %c%c\n", y, x);
+        } else if (inputBuff[2] == 'P') {
+            printf("User wants to palce flag at %c%c", inputBuff[0], inputBuff[1]);
+        } else {
+            printf("This should not happen.\n");
+        }
+    }
+
+    free(gameState);
+}
+
+void sendLeaderBoard() {
+    printf("User wants to see leaderboard\n");
+}
+
+GameState *setupGame() {
+    GameState *gameState = malloc(sizeof(GameState));
+    placeMines(gameState);
+    gameState->remainingMines = NUM_MINES;
+
+    return gameState;
+}
+
+void Run_Thread(int socketID) {
     bool running = true;
     char inputBuff[MAXDATASIZE];
-    char *outputBuff;
-    GameState *gameState = malloc(sizeof(GameState));
+    char *outputBuff = "";
 
     // This lets the process know that when the thread dies that it should take care of itself.
     pthread_detach(pthread_self());
@@ -69,15 +114,13 @@ void Run_Thread(int socket_id) {
     bool isAuthenticated = false;
 
     // Get the username
-    receiveStringAndReply(socket_id, inputBuff);
-
-    printf("Username entered: %s\n", inputBuff);
+    receiveStringAndReply(socketID, inputBuff);
 
     // Check if a user exists with that name
     Player *curr_player = getPlayer(inputBuff);
 
     // Get the password
-    receiveString(socket_id, inputBuff);
+    receiveString(socketID, inputBuff);
 
     // If we found a player with that name AND the password matches, authenticate.
     if (curr_player != NULL && strncmp(curr_player->password, inputBuff, MAXDATASIZE) == 0) {
@@ -92,11 +135,7 @@ void Run_Thread(int socket_id) {
         printf("Player logged in with wrong credentials.\n");
     }
 
-    sendString(socket_id, outputBuff);
-
-    // place_mines(gameState);
-    // show_board(gameState);
-
+    sendString(socketID, outputBuff);
 
     // leaderBoard.head = malloc(sizeof(score_t));
     // if (leaderBoard.head == NULL)
@@ -129,13 +168,13 @@ void Run_Thread(int socket_id) {
     // }
 
     while (running) {
-        receiveStringAndReply(socket_id, inputBuff);
+        receiveStringAndReply(socketID, inputBuff);
 
-        if (strncmp(inputBuff, "Game", MAXDATASIZE) == 0) {
-            handleGame();
-        } else if (strncmp(inputBuff, "LeaderBoard", MAXDATASIZE) == 0) {
+        if (strncmp(inputBuff, START_GAME, MAXDATASIZE) == 0) {
+            handleGame(socketID, inputBuff);
+        } else if (strncmp(inputBuff, SHOW_LEADERBOARD, MAXDATASIZE) == 0) {
             sendLeaderBoard();
-        } else if (strncmp(inputBuff, "Quit", MAXDATASIZE) == 0) {
+        } else if (strncmp(inputBuff, QUIT, MAXDATASIZE) == 0) {
             running = false;
         } else {
             printf("Something has gone wrong.\n");
@@ -144,9 +183,8 @@ void Run_Thread(int socket_id) {
         printf("Received: %s\n", inputBuff);
     }
 
-    printf("Socket %d disconnected\n", socket_id);
-    close(socket_id);
-    free(gameState);
+    printf("Socket %d disconnected\n", socketID);
+    close(socketID);
     pthread_exit(NULL);
 }
 
@@ -162,7 +200,6 @@ void placeMines(GameState *gameState) {
         do {
             x = rand() % NUM_TILES_X;
             y = rand() % NUM_TILES_Y;
-            // printf("%d %d\n", x, y);
         } while (tileContainsMine(gameState, x, y));
         // place mine at x, y
         gameState->tiles[x][y].isMine = true;
@@ -370,7 +407,7 @@ int main(int argc, char *argv[]) {
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_create(&client_thread, &attr, Run_Thread, new_fd);
-        // pthread_join(client_thread, NULL);
+        pthread_join(client_thread, NULL);
     }
 
     close(new_fd);

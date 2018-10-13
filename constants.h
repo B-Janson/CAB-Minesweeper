@@ -12,6 +12,9 @@
 #define NUM_TILES_X 9
 #define NUM_TILES_Y 9
 #define NUM_MINES 10
+#define START_GAME "game"
+#define SHOW_LEADERBOARD "leaderboard"
+#define QUIT "quit"
 
 
 typedef struct Tile {

@@ -121,7 +121,7 @@ bool handleLogin(int socketID, char inputBuff[], char outputBuff[]) {
 
 void startGame(int socketID, char inputBuff[], char outputBuff[]) {
     printf("You have chosen to play.\n");
-    sendStringAndReceive(socketID, "Game", outputBuff);
+    sendStringAndReceive(socketID, START_GAME, outputBuff);
     setupGame();
     bool playing = true;
 
@@ -162,6 +162,7 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
             }
         } else if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
             playing = false;
+            sendStringAndReceive(socketID, "Q", outputBuff);
         } else {
             // User has chosen an invalid option
             printf("That is not a valid option.\n");
@@ -180,7 +181,7 @@ void setupGame() {
 
 void viewLeaderBoard(int socketID, char inputBuff[], char outputBuff[]) {
     printf("You have chosen to view Leaderboard.\n");
-    sendStringAndReceive(socketID, "LeaderBoard", outputBuff);
+    sendStringAndReceive(socketID, SHOW_LEADERBOARD, outputBuff);
 }
 
 
@@ -215,7 +216,7 @@ int main(int argc, char *argv[]) {
             viewLeaderBoard(socketID, inputBuff, outputBuff);
         } else if (strncmp(inputBuff, "3", 10) == 0) {
             printf("You have chosen to quit.\n");
-            sendStringAndReceive(socketID, "Quit", outputBuff);
+            sendStringAndReceive(socketID, QUIT, outputBuff);
             running = false;
         } else {
             printf("You have chosen an invalid option.\n");
