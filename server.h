@@ -17,6 +17,8 @@ void placeMines(GameState *gameState);
 
 void addScore(char *name, int time);
 
+void show_board(GameState *gameState);
+
 void setup_players();
 
 GameState *setupGame();

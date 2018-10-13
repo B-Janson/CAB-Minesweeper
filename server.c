@@ -73,10 +73,8 @@ void handleGame(int socketID, char inputBuff[]) {
             playing = false;
             printf("Player wants to exit game\n");
         } else if (inputBuff[2] == 'R') {
-            printf("IS THIS FUCKED?\n");
             char y = inputBuff[0];
             char x = inputBuff[1];
-            printf("MADE IN HERE\n");
             printf("User wants to reveal tile %c%c\n", y, x);
         } else if (inputBuff[2] == 'P') {
             printf("User wants to palce flag at %c%c", inputBuff[0], inputBuff[1]);
@@ -92,9 +90,96 @@ void sendLeaderBoard() {
     printf("User wants to see leaderboard\n");
 }
 
+int* getAdjacentTiles(GameState *gameState, int i, int j) {
+    static int tiles[8] = {-1};
+
+    // top left
+    tiles[0] = (i - 1) * 10 + j - 1;
+    // top
+    tiles[1] = (i - 1) * 10 + j;
+    // top right
+    tiles[2] = (i - 1) * 10 + j + 1;
+    // left
+    tiles[3] = (i) * 10 + j - 1;
+    // right
+    tiles[4] = (i) * 10 + j + 1;
+    // bottom left
+    tiles[5] = (i + 1) * 10 + j - 1;
+    // bottom
+    tiles[6] = (i + 1) * 10 + j;
+    // bottom right
+    tiles[7] = (i + 1) * 10 + j + 1;
+
+    // Left hand border
+    if (j == 0) {
+        tiles[0] = -1;
+        tiles[3] = -1;
+        tiles[5] = -1;
+    }
+
+    // Right hand border
+    if (j == NUM_TILES_X - 1) {
+        tiles[2] = -1;
+        tiles[4] = -1;
+        tiles[7] = -1;
+    }
+
+    // Top border
+    if (i == 0) {
+        tiles[0] = -1;
+        tiles[1] = -1;
+        tiles[2] = -1;
+    }
+
+    // Top border
+    if (i == NUM_TILES_Y - 1) {
+        tiles[5] = -1;
+        tiles[6] = -1;
+        tiles[7] = -1;
+    }
+
+    return tiles;
+}
+
 GameState *setupGame() {
+    // allocate memory for the game state
     GameState *gameState = malloc(sizeof(GameState));
+    // place mines randomly
     placeMines(gameState);
+
+    // show the mines on the field
+    show_board(gameState);
+
+    // loop to show the number of mines at a location
+    char *vertical = "ABCDEFGHI";
+    printf("\n");
+    printf("    1 2 3 4 5 6 7 8 9\n");
+    printf("  -------------------\n");
+    for (int i = 0; i < NUM_TILES_Y; ++i) {
+        printf("%c | ", vertical[i]);
+        for (int j = 0; j < NUM_TILES_X; ++j) {
+            // this gets a list of coordinates of surrounding squares
+            int *adjacentTiles = getAdjacentTiles(gameState, i, j);
+            int numAdjacent = 0;
+            for (int k = 0; k < 8; ++k) {
+                // if the square actually exists (i.e. not outside field of play)
+                if (adjacentTiles[k] != -1) {
+                    // get back the x, y grid coordinate
+                    int x = adjacentTiles[k] % 10;
+                    int y = adjacentTiles[k] / 10;
+
+                    // increment the number of adjacent mines
+                    if (gameState->tiles[y][x].isMine) {
+                        numAdjacent++;
+                    }
+                }
+            }
+            printf("%d ", numAdjacent);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
     gameState->remainingMines = NUM_MINES;
 
     return gameState;
@@ -195,6 +280,16 @@ bool tileContainsMine(GameState *gameState, int x, int y) {
 
 
 void placeMines(GameState *gameState) {
+    for (int i = 0; i < NUM_TILES_Y; ++i) {
+        for (int j = 0; j < NUM_TILES_X; ++j) {
+            gameState->tiles[i][j].isMine = false;
+            gameState->tiles[i][j].adjacentMines = 0;
+            gameState->tiles[i][j].revealed = false;
+        }
+    }
+
+
+
     for (int i = 0; i < NUM_MINES; ++i) {
         int x, y;
         do {
