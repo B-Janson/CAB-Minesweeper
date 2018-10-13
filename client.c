@@ -41,14 +41,14 @@ void sendStringAndReceive(int socketID, char *message, char *outputBuf) {
 
 void showBoard() {
     char *vertical = "ABCDEFGHI";
-    printf("Remaining mines: %d\n", 10);
+    printf("Remaining mines: %d\n", gameState->remainingMines);
     printf("\n");
     printf("    1 2 3 4 5 6 7 8 9\n");
     printf("  -------------------\n");
     for (int i = 0; i < NUM_TILES_Y; ++i) {
         printf("%c | ", vertical[i]);
         for (int j = 0; j < NUM_TILES_X; ++j) {
-            if (tile_contains_mine(gameState, i, j)) {
+            if (tileContainsMine(i, j)) {
                 printf("* ");
             } else {
                 printf("  ");
@@ -59,7 +59,7 @@ void showBoard() {
     printf("\n");
 }
 
-bool tile_contains_mine(GameState *gameState, int x, int y) {
+bool tileContainsMine(int x, int y) {
     return gameState->tiles[x][y].isMine;
 }
 
@@ -97,14 +97,7 @@ int setupConnection(int argc, char *argv[]) {
     return socketID;
 }
 
-
-int main(int argc, char *argv[]) {
-    char inputBuff[MAXDATASIZE];
-    char outputBuf[MAXDATASIZE];
-    int socketID = setupConnection(argc, argv);
-    gameState = malloc(sizeof(GameState));
-    bool running = true;
-
+bool handleLogin(int socketID, char inputBuff[], char outputBuff[]) {
     printf("============================================\n");
     printf("Welcome to the online Minesweeper gaming system\n");
     printf("============================================\n\n");
@@ -112,44 +105,27 @@ int main(int argc, char *argv[]) {
     printf("You are required to log on with your registered user name and password.\n\n");
     printf("Username: ");
     scanf("%s", inputBuff);
-    sendStringAndReceive(socketID, inputBuff, outputBuf);
+    sendStringAndReceive(socketID, inputBuff, outputBuff);
 
     printf("Password: ");
     scanf("%s", inputBuff);
-    sendStringAndReceive(socketID, inputBuff, outputBuf);
+    sendStringAndReceive(socketID, inputBuff, outputBuff);
 
     // if server has not authenticated user
-    if (strncmp(outputBuf, "0", 10) == 0) {
-        printf("You entered either an incorrect username or password. Disconnecting.\n");
-        close(socketID);
-        return 0;
+    if (strncmp(outputBuff, "0", 10) == 0) {
+        return false;
     }
 
-    printf("Welcome to the Minesweeper gaming system.\n\n");
-    printf("Please enter a selection:\n");
-    printf("<1> Play Minesweeper\n");
-    printf("<2> Show Leaderboard\n");
-    printf("<3> Quit\n\n");
-    printf("Selection option (1-3): ");
-    scanf("%s", inputBuff);
-    printf("\n");
+    return true;
+}
 
-    if (strncmp(inputBuff, "1", 10) == 0) {
-        printf("You have chosen to play.\n");
-        sendStringAndReceive(socketID, "Game", outputBuf);
-    }
+void startGame(int socketID, char inputBuff[], char outputBuff[]) {
+    printf("You have chosen to play.\n");
+    sendStringAndReceive(socketID, "Game", outputBuff);
+    setupGame();
+    bool playing = true;
 
-    if (strncmp(inputBuff, "2", 10) == 0) {
-        printf("You have chosen to view Leaderboard.\n");
-        sendStringAndReceive(socketID, "LeaderBoard", outputBuf);
-    }
-
-    if (strncmp(inputBuff, "3", 10) == 0) {
-        printf("You have chosen to quit.\n");
-        running = 0;
-    }
-
-    while (running) {
+    while (playing) {
         showBoard();
         printf("Choose an option:\n");
         printf("<R> Reveal tile\n");
@@ -159,6 +135,8 @@ int main(int argc, char *argv[]) {
         scanf("%s", inputBuff);
 
         if (strncmp(inputBuff, "R", MAXDATASIZE) == 0) {
+            // User wants to reveal tile
+
             printf("Enter tile coordinates: ");
             scanf("%s", inputBuff);
             int length = strnlen(inputBuff, MAXDATASIZE);
@@ -169,15 +147,79 @@ int main(int argc, char *argv[]) {
                 inputBuff[3] = '\0';
                 sendString(socketID, inputBuff);
             }
+        } else if (strncmp(inputBuff, "P", MAXDATASIZE) == 0) {
+            // User wants to place a flag
+
+            printf("Enter tile coordinates: ");
+            scanf("%s", inputBuff);
+            int length = strnlen(inputBuff, MAXDATASIZE);
+            if (length != 2) {
+                perror("Coordinates must be two characters i.e. B2");
+            } else {
+                inputBuff[2] = 'P';
+                inputBuff[3] = '\0';
+                sendString(socketID, inputBuff);
+            }
+        } else if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
+            playing = false;
+        } else {
+            // User has chosen an invalid option
+            printf("That is not a valid option.\n");
         }
+    }
 
-        if (strncmp(inputBuff, "-1", MAXDATASIZE) == 0) {
-            running = 0;
+    free(gameState);
+}
+
+void setupGame() {
+    // Allocate memory
+    gameState = malloc(sizeof(GameState));
+    // Set remaining mines to be initial number of mines
+    gameState->remainingMines = NUM_MINES;
+}
+
+void viewLeaderBoard(int socketID, char inputBuff[], char outputBuff[]) {
+    printf("You have chosen to view Leaderboard.\n");
+    sendStringAndReceive(socketID, "LeaderBoard", outputBuff);
+}
+
+
+int main(int argc, char *argv[]) {
+    char inputBuff[MAXDATASIZE];
+    char outputBuff[MAXDATASIZE];
+    int socketID = setupConnection(argc, argv);
+    bool running = true;
+
+    bool authenticated = handleLogin(socketID, inputBuff, outputBuff);
+
+    if (!authenticated) {
+        printf("You entered either an incorrect username or password. Disconnecting.\n");
+        close(socketID);
+        return 0;
+    }
+
+    while (running) {
+        printf("Welcome to the Minesweeper gaming system.\n\n");
+        printf("Please enter a selection:\n");
+        printf("<1> Play Minesweeper\n");
+        printf("<2> Show Leaderboard\n");
+        printf("<3> Quit\n\n");
+        printf("Selection option (1-3): ");
+        scanf("%s", inputBuff);
+        printf("\n");
+
+        // User selected to play a game
+        if (strncmp(inputBuff, "1", 10) == 0) {
+            startGame(socketID, inputBuff, outputBuff);
+        } else if (strncmp(inputBuff, "2", 10) == 0) {
+            viewLeaderBoard(socketID, inputBuff, outputBuff);
+        } else if (strncmp(inputBuff, "3", 10) == 0) {
+            printf("You have chosen to quit.\n");
+            sendStringAndReceive(socketID, "Quit", outputBuff);
+            running = false;
+        } else {
+            printf("You have chosen an invalid option.\n");
         }
-
-        sendStringAndReceive(socketID, inputBuff, outputBuf);
-
-        printf("%s\n", outputBuf);
     }
 
     close(socketID);

@@ -1,45 +1,23 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-typedef struct Tile
-{
-	int adjacentMines;
-	bool revealed;
-	bool isMine;
-} Tile;
+#include "constants.h"
 
-typedef struct GameState
-{
-	Tile tiles[NUM_TILES_X][NUM_TILES_Y];
-} GameState;
+Player *getPlayer(char *name);
 
-typedef struct Score
-{
-	char* name;
-	int time;
-	struct Score *next;
-} Score;
+char *receiveString(int socket_id, char *buf);
 
-typedef struct Player
-{
-	char* name;
-	char* password;
-	int gamesPlayed;
-	int gamesWon;
-} Player;
+void sendString(int socket_id, char *message);
 
-typedef struct LeaderBoard
-{
-	Score *head;
-	Player *players[10];
-} LeaderBoard;
+char *receiveStringAndReply(int socket_id, char *buf);
+
+bool tileContainsMine(GameState *gameState, int x, int y);
+
+void placeMines(GameState *gameState);
+
+void addScore(char *name, int time);
+
+void setup_players();
+
 #endif
 
-
-void place_mines(GameState *gameState);
-bool tile_contains_mine(GameState *gamestate, int x, int y);
-void show_board(GameState *gameState);
-void add_score(char *name, int time);
-void show_leaderboard();
-Player* getPlayer(char* name);
-void setup_players();
