@@ -211,7 +211,9 @@ void viewLeaderBoard(int socketID, char inputBuff[], char outputBuff[]) {
 
     while(strncmp(outputBuff, "-1", MAXDATASIZE) != 0) {
         receiveString(socketID, outputBuff);
-        printf("%s", outputBuff);
+        if (strncmp(outputBuff, "-1", MAXDATASIZE) != 0) {
+            printf("%s", outputBuff);
+        }
     }
 
     printf("=======================================================\n");
