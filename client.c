@@ -30,7 +30,7 @@ void receiveString(int socketID, char *output) {
 
     output[number_of_bytes] = '\0';
 
-    printf("Received: '%s'\n", output);
+    //printf("Received: '%s'\n", output);
 }
 
 void sendStringAndReceive(int socketID, char *message, char *outputBuf) {
@@ -206,7 +206,16 @@ void setupGame() {
 
 void viewLeaderBoard(int socketID, char inputBuff[], char outputBuff[]) {
     printf("You have chosen to view Leaderboard.\n");
+    printf("=======================================================\n");
     sendStringAndReceive(socketID, SHOW_LEADERBOARD, outputBuff);
+
+    while(strncmp(outputBuff, "-1", MAXDATASIZE) != 0) {
+        receiveString(socketID, outputBuff);
+        printf("%s", outputBuff);
+    }
+
+    printf("=======================================================\n");
+
 }
 
 

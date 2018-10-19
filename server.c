@@ -44,6 +44,7 @@ void sendString(int socket_id, char *message) {
     if (send(socket_id, message, MAXDATASIZE, 0) == -1) {
         perror("send");
     }
+    //printf("%s", message);
 }
 
 char *receiveStringAndReply(int socket_id, char *buf) {
@@ -143,8 +144,21 @@ void handleGame(int socketID, char inputBuff[]) {
     free(gameState);
 }
 
-void sendLeaderBoard() {
+void sendLeaderBoard(int socketID) {
     printf("User wants to see leaderboard\n");
+
+    Score *current = leaderBoard.head;
+
+    while (current != NULL) {
+        printf("Hi");
+        Player *curr_player = getPlayer(current->name);
+        char inputBuff[MAXDATASIZE];
+        sprintf(inputBuff, "%s\t\t%d seconds\t\t%d games won, %d games played\n", current->name, current->time,
+               curr_player->gamesWon, curr_player->gamesPlayed);
+        sendString(socketID, inputBuff);
+        current = current->next;
+    }
+    sendString(socketID, "-1");
 }
 
 int* getAdjacentTiles(GameState *gameState, int i, int j) {
@@ -311,13 +325,20 @@ void Run_Thread(int socketID) {
     // 	}
     // }
 
+    addScore("Maolin", 25);
+    addScore("Maolin", 50);
+    addScore("Maolin", 2);
+    addScore("Maolin", 1000);
+    addScore("Maolin", 26);
+    addScore("Maolin", 15);
+
     while (running) {
         receiveStringAndReply(socketID, inputBuff);
 
         if (strncmp(inputBuff, START_GAME, MAXDATASIZE) == 0) {
             handleGame(socketID, inputBuff);
         } else if (strncmp(inputBuff, SHOW_LEADERBOARD, MAXDATASIZE) == 0) {
-            sendLeaderBoard();
+            sendLeaderBoard(socketID);
         } else if (strncmp(inputBuff, QUIT, MAXDATASIZE) == 0) {
             running = false;
         } else {
