@@ -51,7 +51,7 @@ void showBoard() {
         printf("%c | ", vertical[i]);
         for (int j = 0; j < NUM_TILES_X; ++j) {
             if (tileContainsMine(i, j)) {
-                printf("* ");
+                printf("+ ");
             } else if (gameState->tiles[i][j].adjacentMines != -1) {
                 printf("%d ", gameState->tiles[i][j].adjacentMines);
             } else {
@@ -187,7 +187,18 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
             } else {
                 inputBuff[2] = 'P';
                 inputBuff[3] = '\0';
-                sendString(socketID, inputBuff);
+                sendStringAndReceive(socketID, inputBuff, outputBuff);
+
+                int y = inputBuff[0] - 'A';
+                int x = inputBuff[1] - '1';
+
+                if (strncmp(outputBuff, "MINE", MAXDATASIZE) == 0) {
+                    printf("MINE\n");
+                    gameState->remainingMines--;
+                    gameState->tiles[y][x].isMine = true;
+                } else {
+                    printf("NO MINE\n");
+                }
             }
         } else if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
             playing = false;

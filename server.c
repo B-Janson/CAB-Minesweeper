@@ -95,10 +95,6 @@ void handleGame(int socketID, char inputBuff[]) {
 
         printf("User entered: %s\n", inputBuff);
 
-        printf("inputBUff[0] == %c\n", inputBuff[0]);
-        printf("inputBUff[1] == %c\n", inputBuff[1]);
-        printf("inputBuff[2] == %c\n", inputBuff[2]);
-
 
         if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
             playing = false;
@@ -116,7 +112,7 @@ void handleGame(int socketID, char inputBuff[]) {
                 int surrounding[9][9] = {{0}};
                 getSurrounding(gameState, surrounding, x, y, socketID, inputBuff);
                 printf("y:%d x:%d %d\n", y, x, gameState->tiles[y][x].adjacentMines);
-                inputBuff = "-1";
+                sprintf(inputBuff, "-1");
             }
 
             sendString(socketID, inputBuff);
@@ -142,7 +138,21 @@ void handleGame(int socketID, char inputBuff[]) {
             printf("\n");
 
         } else if (inputBuff[2] == 'P') {
-            printf("User wants to palce flag at %c%c", inputBuff[0], inputBuff[1]);
+            int y = inputBuff[0] - 65;
+            int x = inputBuff[1] - 49;
+            printf("User wants to place flag at %d%d %d\n", y, x, gameState->tiles[y][x].isMine);
+
+            if (tileContainsMine(gameState, y, x)) {
+                printf("Mine hit at %d %d\n", x, y);
+                gameState->remainingMines--;
+                gameState->tiles[y][x].revealed = true;
+                sprintf(inputBuff, "MINE");
+            } else {
+                printf("Not mine hit at %d %d\n", x, y);
+                sprintf(inputBuff, "NONE");
+            }
+
+            sendString(socketID, inputBuff);
         } else {
             printf("This should not happen.\n");
         }
