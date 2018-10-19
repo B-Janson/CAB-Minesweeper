@@ -55,23 +55,32 @@ char *receiveStringAndReply(int socket_id, char *buf) {
     return buf;
 }
 
-void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y) {
+void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y, int socketID, char *inputBuff) {
+    if (x < 0 || x >= NUM_TILES_X || y < 0 || y >= NUM_TILES_Y) {
+        return;
+    }
 
-    if (x < 0 || x > NUM_TILES_X || y < 0 || y > NUM_TILES_Y) {
+    if (gameState->tiles[y][x].revealed) {
         return;
     }
 
     surrounding[y][x] = gameState->tiles[y][x].adjacentMines;
+    gameState->tiles[y][x].revealed = true;
 
-    if (gameState->tiles[y][x].adjacentMines == 0 && surrounding[y][x] != 0) {
-        getSurrounding(gameState, surrounding, x - 1, y - 1);
-        getSurrounding(gameState, surrounding, x, y - 1);
-        getSurrounding(gameState, surrounding, x + 1, y - 1);
-        getSurrounding(gameState, surrounding, x - 1, y);
-        getSurrounding(gameState, surrounding, x + 1, y);
-        getSurrounding(gameState, surrounding, x - 1, y + 1);
-        getSurrounding(gameState, surrounding, x, y + 1);
-        getSurrounding(gameState, surrounding, x + 1, y + 1);
+    printf("%d%d%d\n", x, y, surrounding[y][x]);
+    sprintf(inputBuff, "%d%d%d", x, y, surrounding[y][x]);
+
+    sendString(socketID, inputBuff);
+
+    if (surrounding[y][x] == 0) {
+        getSurrounding(gameState, surrounding, x - 1, y - 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x, y - 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x + 1, y - 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x - 1, y, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x + 1, y, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x - 1, y + 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x, y + 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x + 1, y + 1, socketID, inputBuff);
     }
 }
 
@@ -87,10 +96,6 @@ void handleGame(int socketID, char inputBuff[]) {
 
         printf("User entered: %s\n", inputBuff);
 
-        printf("inputBUff[0] == %c\n", inputBuff[0]);
-        printf("inputBUff[1] == %c\n", inputBuff[1]);
-        printf("inputBuff[2] == %c\n", inputBuff[2]);
-
 
         if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
             playing = false;
@@ -101,22 +106,21 @@ void handleGame(int socketID, char inputBuff[]) {
             printf("User wants to reveal tile %c%c %d\n", y, x, gameState->tiles[y][x].isMine);
 
             if (tileContainsMine(gameState, y, x)) {
-                printf("Mine hit at %d %d", x, y);
+                printf("Mine hit at %d %d\n", x, y);
                 sprintf(inputBuff, "MINE");
                 playing = false;
             } else {
-                printf("y:%d x:%d %d", y, x, gameState->tiles[y][x].adjacentMines);
-                sprintf(inputBuff, "%d", gameState->tiles[y][x].adjacentMines);
+                int surrounding[9][9] = {{0}};
+                getSurrounding(gameState, surrounding, x, y, socketID, inputBuff);
+                printf("y:%d x:%d %d\n", y, x, gameState->tiles[y][x].adjacentMines);
+                sprintf(inputBuff, "-1");
             }
 
             sendString(socketID, inputBuff);
 
 
 
-//            int surrounding[9][9] = {{-1}};
-//
-//            getSurrounding(gameState, surrounding, x - 49, y - 65);
-//
+
 //            for (int i = 0; i < 9; ++i) {
 //                for (int j = 0; j < 9; ++j) {
 //                    printf("%d ", surrounding[i][j]);
@@ -135,7 +139,21 @@ void handleGame(int socketID, char inputBuff[]) {
             printf("\n");
 
         } else if (inputBuff[2] == 'P') {
-            printf("User wants to palce flag at %c%c", inputBuff[0], inputBuff[1]);
+            int y = inputBuff[0] - 65;
+            int x = inputBuff[1] - 49;
+            printf("User wants to place flag at %d%d %d\n", y, x, gameState->tiles[y][x].isMine);
+
+            if (tileContainsMine(gameState, y, x)) {
+                printf("Mine hit at %d %d\n", x, y);
+                gameState->remainingMines--;
+                gameState->tiles[y][x].revealed = true;
+                sprintf(inputBuff, "MINE");
+            } else {
+                printf("Not mine hit at %d %d\n", x, y);
+                sprintf(inputBuff, "NONE");
+            }
+
+            sendString(socketID, inputBuff);
         } else {
             printf("This should not happen.\n");
         }
@@ -161,7 +179,7 @@ void sendLeaderBoard(int socketID) {
     sendString(socketID, "-1");
 }
 
-int* getAdjacentTiles(GameState *gameState, int i, int j) {
+int *getAdjacentTiles(GameState *gameState, int i, int j) {
     static int tiles[8] = {-1};
 
     // top left
@@ -367,7 +385,6 @@ void placeMines(GameState *gameState) {
             gameState->tiles[i][j].revealed = false;
         }
     }
-
 
 
     for (int i = 0; i < NUM_MINES; ++i) {

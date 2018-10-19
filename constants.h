@@ -21,6 +21,7 @@ typedef struct Tile {
     int adjacentMines;
     bool revealed;
     bool isMine;
+    bool isFlag;
 } Tile;
 
 typedef struct GameState {
