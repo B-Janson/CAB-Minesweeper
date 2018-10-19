@@ -56,13 +56,20 @@ char *receiveStringAndReply(int socket_id, char *buf) {
 
 void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y) {
 
-    if (x < 0 || x > NUM_TILES_X || y < 0 || y > NUM_TILES_Y) {
+    if (x < 0 || x >= NUM_TILES_X || y < 0 || y >= NUM_TILES_Y) {
+        return;
+    }
+
+    if (gameState->tiles[y][x].revealed) {
         return;
     }
 
     surrounding[y][x] = gameState->tiles[y][x].adjacentMines;
+    gameState->tiles[y][x].revealed = true;
 
-    if (gameState->tiles[y][x].adjacentMines == 0 && surrounding[y][x] != 0) {
+    printf("x:%d y:%d adjacent:%d\n", x, y, surrounding[y][x]);
+
+    if (surrounding[y][x] == 0) {
         getSurrounding(gameState, surrounding, x - 1, y - 1);
         getSurrounding(gameState, surrounding, x, y - 1);
         getSurrounding(gameState, surrounding, x + 1, y - 1);
@@ -100,28 +107,27 @@ void handleGame(int socketID, char inputBuff[]) {
             printf("User wants to reveal tile %c%c %d\n", y, x, gameState->tiles[y][x].isMine);
 
             if (tileContainsMine(gameState, y, x)) {
-                printf("Mine hit at %d %d", x, y);
+                printf("Mine hit at %d %d\n", x, y);
                 sprintf(inputBuff, "MINE");
                 playing = false;
             } else {
-                printf("y:%d x:%d %d", y, x, gameState->tiles[y][x].adjacentMines);
+                printf("y:%d x:%d %d\n", y, x, gameState->tiles[y][x].adjacentMines);
                 sprintf(inputBuff, "%d", gameState->tiles[y][x].adjacentMines);
             }
 
             sendString(socketID, inputBuff);
 
 
+            int surrounding[9][9] = {{0}};
 
-//            int surrounding[9][9] = {{-1}};
-//
-//            getSurrounding(gameState, surrounding, x - 49, y - 65);
-//
-//            for (int i = 0; i < 9; ++i) {
-//                for (int j = 0; j < 9; ++j) {
-//                    printf("%d ", surrounding[i][j]);
-//                }
-//                printf("\n");
-//            }
+            getSurrounding(gameState, surrounding, x, y);
+
+            for (int i = 0; i < 9; ++i) {
+                for (int j = 0; j < 9; ++j) {
+                    printf("%d ", surrounding[i][j]);
+                }
+                printf("\n");
+            }
 
 
 
@@ -147,7 +153,7 @@ void sendLeaderBoard() {
     printf("User wants to see leaderboard\n");
 }
 
-int* getAdjacentTiles(GameState *gameState, int i, int j) {
+int *getAdjacentTiles(GameState *gameState, int i, int j) {
     static int tiles[8] = {-1};
 
     // top left
@@ -311,6 +317,8 @@ void Run_Thread(int socketID) {
     // 	}
     // }
 
+    addScore("Maolin", 25);
+
     while (running) {
         receiveStringAndReply(socketID, inputBuff);
 
@@ -346,7 +354,6 @@ void placeMines(GameState *gameState) {
             gameState->tiles[i][j].revealed = false;
         }
     }
-
 
 
     for (int i = 0; i < NUM_MINES; ++i) {
