@@ -95,11 +95,22 @@ void handleGame(int socketID, char inputBuff[]) {
             playing = false;
             printf("Player wants to exit game\n");
         } else if (inputBuff[2] == 'R') {
-            char y = inputBuff[0];
-            char x = inputBuff[1];
-            printf("User wants to reveal tile %c%c\n", y, x);
+            int y = inputBuff[0] - 65;
+            int x = inputBuff[1] - 49;
+            printf("User wants to reveal tile %c%c %d\n", y, x, gameState->tiles[y][x].isMine);
 
-            char *output = "";
+            if (tileContainsMine(gameState, y, x)) {
+                printf("Mine hit at %d %d", x, y);
+                sprintf(inputBuff, "MINE");
+                playing = false;
+            } else {
+                printf("y:%d x:%d %d", y, x, gameState->tiles[y][x].adjacentMines);
+                sprintf(inputBuff, "%d", gameState->tiles[y][x].adjacentMines);
+            }
+
+            sendString(socketID, inputBuff);
+
+
 
 //            int surrounding[9][9] = {{-1}};
 //
@@ -112,11 +123,9 @@ void handleGame(int socketID, char inputBuff[]) {
 //                printf("\n");
 //            }
 
-            printf("y:%d x:%d %d", y-65, x-49, gameState->tiles[y - 65][x - 49].adjacentMines);
 
-            sprintf(inputBuff, "%d", gameState->tiles[y - 65][x - 49].adjacentMines);
 
-            sendString(socketID, inputBuff);
+
 
 //            for (int i = 0; i < NUM_TILES_X; ++i) {
 //                printf("%d ", gameState->tiles[0][i].adjacentMines);

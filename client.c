@@ -151,13 +151,20 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                 inputBuff[3] = '\0';
                 sendStringAndReceive(socketID, inputBuff, outputBuff);
 
-                int numAdjacent = atoi(&outputBuff[0]);
                 int y = inputBuff[0] - 65;
                 int x = inputBuff[1] - 49;
 
-                printf("%d %d %d \n", x, y, numAdjacent);
+                if (strncmp(outputBuff, "MINE", MAXDATASIZE) == 0) {
+                    printf("HIT A MINE\n");
+                    gameState->tiles[y][x].isMine = true;
+                    playing = false;
+                } else {
+                    int numAdjacent = atoi(&outputBuff[0]);
+                    printf("%d %d %d \n", x, y, numAdjacent);
+                    gameState->tiles[y][x].adjacentMines = numAdjacent;
+                }
 
-                gameState->tiles[y][x].adjacentMines = numAdjacent;
+
             }
         } else if (strncmp(inputBuff, "P", MAXDATASIZE) == 0) {
             // User wants to place a flag
