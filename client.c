@@ -29,6 +29,8 @@ void receiveString(int socketID, char *output) {
     }
 
     output[number_of_bytes] = '\0';
+
+    printf("Received: '%s'\n", output);
 }
 
 void sendStringAndReceive(int socketID, char *message, char *outputBuf) {
@@ -50,6 +52,8 @@ void showBoard() {
         for (int j = 0; j < NUM_TILES_X; ++j) {
             if (tileContainsMine(i, j)) {
                 printf("* ");
+            } else if (gameState->tiles[i][j].adjacentMines != -1) {
+                printf("%d ", gameState->tiles[i][j].adjacentMines);
             } else {
                 printf("  ");
             }
@@ -145,7 +149,15 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
             } else {
                 inputBuff[2] = 'R';
                 inputBuff[3] = '\0';
-                sendString(socketID, inputBuff);
+                sendStringAndReceive(socketID, inputBuff, outputBuff);
+
+                int numAdjacent = atoi(&outputBuff[0]);
+                int y = inputBuff[0] - 65;
+                int x = inputBuff[1] - 49;
+
+                printf("%d %d %d \n", x, y, numAdjacent);
+
+                gameState->tiles[y][x].adjacentMines = numAdjacent;
             }
         } else if (strncmp(inputBuff, "P", MAXDATASIZE) == 0) {
             // User wants to place a flag
@@ -177,6 +189,12 @@ void setupGame() {
     gameState = malloc(sizeof(GameState));
     // Set remaining mines to be initial number of mines
     gameState->remainingMines = NUM_MINES;
+
+    for (int i = 0; i < NUM_TILES_Y; ++i) {
+        for (int j = 0; j < NUM_TILES_X; ++j) {
+            gameState->tiles[i][j].adjacentMines = -1;
+        }
+    }
 }
 
 void viewLeaderBoard(int socketID, char inputBuff[], char outputBuff[]) {

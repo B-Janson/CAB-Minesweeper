@@ -54,13 +54,35 @@ char *receiveStringAndReply(int socket_id, char *buf) {
     return buf;
 }
 
+void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y) {
+
+    if (x < 0 || x > NUM_TILES_X || y < 0 || y > NUM_TILES_Y) {
+        return;
+    }
+
+    surrounding[y][x] = gameState->tiles[y][x].adjacentMines;
+
+    if (gameState->tiles[y][x].adjacentMines == 0 && surrounding[y][x] != 0) {
+        getSurrounding(gameState, surrounding, x - 1, y - 1);
+        getSurrounding(gameState, surrounding, x, y - 1);
+        getSurrounding(gameState, surrounding, x + 1, y - 1);
+        getSurrounding(gameState, surrounding, x - 1, y);
+        getSurrounding(gameState, surrounding, x + 1, y);
+        getSurrounding(gameState, surrounding, x - 1, y + 1);
+        getSurrounding(gameState, surrounding, x, y + 1);
+        getSurrounding(gameState, surrounding, x + 1, y + 1);
+    }
+}
+
 void handleGame(int socketID, char inputBuff[]) {
     printf("User has chosen to play a game.\n");
     GameState *gameState = setupGame();
     bool playing = true;
 
     while (playing) {
-        receiveStringAndReply(socketID, inputBuff);
+//        receiveStringAndReply(socketID, inputBuff);
+        receiveString(socketID, inputBuff);
+
 
         printf("User entered: %s\n", inputBuff);
 
@@ -76,6 +98,32 @@ void handleGame(int socketID, char inputBuff[]) {
             char y = inputBuff[0];
             char x = inputBuff[1];
             printf("User wants to reveal tile %c%c\n", y, x);
+
+            char *output = "";
+
+//            int surrounding[9][9] = {{-1}};
+//
+//            getSurrounding(gameState, surrounding, x - 49, y - 65);
+//
+//            for (int i = 0; i < 9; ++i) {
+//                for (int j = 0; j < 9; ++j) {
+//                    printf("%d ", surrounding[i][j]);
+//                }
+//                printf("\n");
+//            }
+
+            printf("y:%d x:%d %d", y-65, x-49, gameState->tiles[y - 65][x - 49].adjacentMines);
+
+            sprintf(inputBuff, "%d", gameState->tiles[y - 65][x - 49].adjacentMines);
+
+            sendString(socketID, inputBuff);
+
+//            for (int i = 0; i < NUM_TILES_X; ++i) {
+//                printf("%d ", gameState->tiles[0][i].adjacentMines);
+//            }
+
+            printf("\n");
+
         } else if (inputBuff[2] == 'P') {
             printf("User wants to palce flag at %c%c", inputBuff[0], inputBuff[1]);
         } else {
@@ -174,6 +222,8 @@ GameState *setupGame() {
                     }
                 }
             }
+            gameState->tiles[i][j].adjacentMines = numAdjacent;
+//            printf("i:%d j:%d\n", i, j);
             printf("%d ", numAdjacent);
         }
         printf("\n");
