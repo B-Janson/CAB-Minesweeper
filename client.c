@@ -30,7 +30,7 @@ void receiveString(int socketID, char *output) {
 
     output[number_of_bytes] = '\0';
 
-    printf("Received: '%s'\n", output);
+//    printf("Received: '%s'\n", output);
 }
 
 void sendStringAndReceive(int socketID, char *message, char *outputBuf) {
@@ -159,9 +159,19 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                     gameState->tiles[y][x].isMine = true;
                     playing = false;
                 } else {
-                    int numAdjacent = atoi(&outputBuff[0]);
-                    printf("%d %d %d \n", x, y, numAdjacent);
-                    gameState->tiles[y][x].adjacentMines = numAdjacent;
+                    while (strncmp(outputBuff, "-1", MAXDATASIZE) != 0) {
+                        int x = outputBuff[0] - '0';
+                        int y = outputBuff[1] - '0';
+                        int adjacent = outputBuff[2] - '0';
+
+                        gameState->tiles[y][x].adjacentMines = adjacent;
+
+                        printf("x:%d y:%d adj:%d\n", x, y, adjacent);
+                        receiveString(socketID, outputBuff);
+                    }
+//                    int numAdjacent = atoi(&outputBuff[0]);
+//                    printf("%d %d %d \n", x, y, numAdjacent);
+//                    gameState->tiles[y][x].adjacentMines = numAdjacent;
                 }
 
 
@@ -200,6 +210,7 @@ void setupGame() {
     for (int i = 0; i < NUM_TILES_Y; ++i) {
         for (int j = 0; j < NUM_TILES_X; ++j) {
             gameState->tiles[i][j].adjacentMines = -1;
+            gameState->tiles[i][j].isMine = false;
         }
     }
 }

@@ -54,8 +54,7 @@ char *receiveStringAndReply(int socket_id, char *buf) {
     return buf;
 }
 
-void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y) {
-
+void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y, int socketID, char *inputBuff) {
     if (x < 0 || x >= NUM_TILES_X || y < 0 || y >= NUM_TILES_Y) {
         return;
     }
@@ -67,17 +66,20 @@ void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y) {
     surrounding[y][x] = gameState->tiles[y][x].adjacentMines;
     gameState->tiles[y][x].revealed = true;
 
-    printf("x:%d y:%d adjacent:%d\n", x, y, surrounding[y][x]);
+    printf("%d%d%d\n", x, y, surrounding[y][x]);
+    sprintf(inputBuff, "%d%d%d", x, y, surrounding[y][x]);
+
+    sendString(socketID, inputBuff);
 
     if (surrounding[y][x] == 0) {
-        getSurrounding(gameState, surrounding, x - 1, y - 1);
-        getSurrounding(gameState, surrounding, x, y - 1);
-        getSurrounding(gameState, surrounding, x + 1, y - 1);
-        getSurrounding(gameState, surrounding, x - 1, y);
-        getSurrounding(gameState, surrounding, x + 1, y);
-        getSurrounding(gameState, surrounding, x - 1, y + 1);
-        getSurrounding(gameState, surrounding, x, y + 1);
-        getSurrounding(gameState, surrounding, x + 1, y + 1);
+        getSurrounding(gameState, surrounding, x - 1, y - 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x, y - 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x + 1, y - 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x - 1, y, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x + 1, y, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x - 1, y + 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x, y + 1, socketID, inputBuff);
+        getSurrounding(gameState, surrounding, x + 1, y + 1, socketID, inputBuff);
     }
 }
 
@@ -111,23 +113,23 @@ void handleGame(int socketID, char inputBuff[]) {
                 sprintf(inputBuff, "MINE");
                 playing = false;
             } else {
+                int surrounding[9][9] = {{0}};
+                getSurrounding(gameState, surrounding, x, y, socketID, inputBuff);
                 printf("y:%d x:%d %d\n", y, x, gameState->tiles[y][x].adjacentMines);
-                sprintf(inputBuff, "%d", gameState->tiles[y][x].adjacentMines);
+                inputBuff = "-1";
             }
 
             sendString(socketID, inputBuff);
 
 
-            int surrounding[9][9] = {{0}};
 
-            getSurrounding(gameState, surrounding, x, y);
 
-            for (int i = 0; i < 9; ++i) {
-                for (int j = 0; j < 9; ++j) {
-                    printf("%d ", surrounding[i][j]);
-                }
-                printf("\n");
-            }
+//            for (int i = 0; i < 9; ++i) {
+//                for (int j = 0; j < 9; ++j) {
+//                    printf("%d ", surrounding[i][j]);
+//                }
+//                printf("\n");
+//            }
 
 
 
