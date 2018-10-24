@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <signal.h>
 #include "server.h"
 
 #include "constants.h"
@@ -153,6 +154,20 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
             if (tileContainsMine(gameState, y, x)) {
                 // They tried to reveal a mine, so store that information in buffer to send
                 sprintf(outputBuff, MINE_MESSAGE);
+
+                sendString(socketID, outputBuff);
+
+                for (int i = 0; i < NUM_TILES_Y; ++i) {
+                    for (int j = 0; j < NUM_TILES_X; ++j) {
+                        if (gameState->tiles[i][j].isMine) {
+                            sprintf(outputBuff, "%d%d", i, j);
+                            sendString(socketID, outputBuff);
+                        }
+                    }
+                }
+
+                sprintf(outputBuff, END_OF_MESSAGE);
+
                 // Stop the game
                 playing = false;
             } else {
@@ -524,9 +539,6 @@ void Run_Thread(int socketID) {
     // This lets the process know that when the thread dies that it should take care of itself.
     pthread_detach(pthread_self());
 
-    // Set the seed
-    srand(RANDOM_NUMBER_SEED);
-
     // A check to see if login details were correct
     bool isAuthenticated = false;
 
@@ -634,7 +646,21 @@ void setupPlayers() {
     }
 }
 
+void sig_handler(int signo) {
+    if (signo == SIGINT) {
+        printf("Received CTRL-C\n");
+    }
+
+    signal(signo, SIG_DFL);
+    raise(signo);
+}
+
 int main(int argc, char *argv[]) {
+    // Set up SIGINT
+    if (signal(SIGINT, sig_handler) == SIG_ERR) {
+        printf("Won't catch SIGINT\n");
+    }
+
     /* Thread and thread attributes */
     pthread_t client_thread;
 
@@ -642,10 +668,15 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in my_addr;    /* my address information */
     struct sockaddr_in their_addr; /* connector's address information */
     socklen_t sin_size;
+    int portNumber = 12345; // Default port number
+
+    if (argc == 2) {
+        portNumber = atoi(argv[1]);
+    }
 
     /* Get port number for server to listen on */
-    if (argc != 2) {
-        fprintf(stderr, "usage: client port_number\n");
+    if (argc > 2) {
+        fprintf(stderr, "usage: ./server port_number\n");
         exit(1);
     }
 
@@ -655,9 +686,11 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    printf("Attempting to open socket on port %d.\n", portNumber);
+
     /* generate the end point */
     my_addr.sin_family = AF_INET;         /* host byte order */
-    my_addr.sin_port = htons(atoi(argv[1]));     /* short, network byte order */
+    my_addr.sin_port = htons(portNumber);     /* short, network byte order */
     my_addr.sin_addr.s_addr = INADDR_ANY; /* auto-fill with my IP */
     /* bzero(&(my_addr.sin_zero), 8);   ZJL*/     /* zero the rest of the struct */
 
@@ -677,10 +710,15 @@ int main(int argc, char *argv[]) {
 
     setupPlayers();
 
+    printf("Seeding\n");
+
+    // Set the seed
+    srand(RANDOM_NUMBER_SEED);
+
     printf("server starts listening ...\n");
 
     /* repeat: accept, send, close the connection */
-    /* for every accepted connection, use a sepetate process or thread to serve it */
+    /* for every accepted connection, use a separate process or thread to serve it */
     while (1) {  /* main accept() loop */
         sin_size = sizeof(struct sockaddr_in);
         if ((new_fd = accept(sockfd, (struct sockaddr *) &their_addr, &sin_size)) == -1) {

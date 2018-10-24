@@ -76,9 +76,12 @@ void showBoard() {
         // Display the current vertical coordinate
         printf("%c | ", vertical[i]);
         for (int j = 0; j < NUM_TILES_X; ++j) {
-            // TODO this should be fixed to accomodate but is ok for now
             if (tileContainsMine(i, j)) {
-                printf("+ ");
+                if (gameState->tiles[i][j].revealed) {
+                    printf("+ ");
+                } else {
+                    printf("* ");
+                }
             } else if (gameState->tiles[i][j].adjacentMines != -1) {
                 printf("%d ", gameState->tiles[i][j].adjacentMines);
             } else {
@@ -213,7 +216,7 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                 int y = inputBuff[0] - Y_OFFSET;
                 int x = inputBuff[1] - X_OFFSET;
 
-                if (y < 0 || y >= NUM_TILES_Y || x < 0 || x < NUM_TILES_X) {
+                if (y < 0 || y >= NUM_TILES_Y || x < 0 || x >= NUM_TILES_X) {
                     printf("These coordinates are outside the game grid. Please try again.\n");
                     continue;
                 }
@@ -226,9 +229,19 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                 // Check what server sent back
                 if (strncmp(outputBuff, MINE_MESSAGE, MAXDATASIZE) == 0) {
                     // This tile was a mine, update game state and terminate game
-                    printf("HIT A MINE\n");
-                    gameState->tiles[y][x].isMine = true;
+                    printf("You hit a mine! Game Over!\n");
+
+                    while (strncmp(outputBuff, END_OF_MESSAGE, MAXDATASIZE) != 0) {
+                        receiveString(socketID, outputBuff);
+                        if (strncmp(outputBuff, END_OF_MESSAGE, MAXDATASIZE) != 0) {
+                            printf("%s\n", outputBuff);
+                            int i = outputBuff[0] - '0';
+                            int j = outputBuff[1] - '0';
+                            gameState->tiles[i][j].isMine = true;
+                        }
+                    }
                     playing = false;
+                    showBoard();
                 } else {
                     // Didn't hit a mine
                     // Keep listening until the server stops (used for recursive requirements for revealing adjacent
@@ -264,7 +277,7 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                 int y = inputBuff[0] - Y_OFFSET;
                 int x = inputBuff[1] - X_OFFSET;
 
-                if (y < 0 || y >= NUM_TILES_Y || x < 0 || x < NUM_TILES_X) {
+                if (y < 0 || y >= NUM_TILES_Y || x < 0 || x >= NUM_TILES_X) {
                     printf("These coordinates are outside the game grid. Please try again.\n");
                     continue;
                 }
@@ -285,11 +298,14 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                         printf("Mine located at this point!\n");
                         gameState->remainingMines--;
                         gameState->tiles[y][x].isMine = true;
+                        gameState->tiles[y][x].revealed = true;
                     } else if (strncmp(outputBuff, WIN_MESSAGE, MAXDATASIZE) == 0) {
                         // That was the last remaining mine and the player has won.
                         gameState->remainingMines--;
                         gameState->tiles[y][x].isMine = true;
+                        gameState->tiles[y][x].revealed = true;
                         printf("Congratulations you have won!\n");
+                        showBoard();
                         playing = false;
                     } else {
                         // No mine at this location
@@ -337,7 +353,7 @@ void setupGame() {
  */
 void viewLeaderBoard(int socketID, char outputBuff[]) {
     printf("You have chosen to view the Leaderboard.\n");
-    printf("================================================================\n");
+    printf("====================================================================\n");
     // Tell server that we want to see the leaderboard
     sendStringAndReceive(socketID, SHOW_LEADERBOARD, outputBuff);
 
@@ -351,7 +367,7 @@ void viewLeaderBoard(int socketID, char outputBuff[]) {
         }
     }
 
-    printf("=================================================================\n");
+    printf("===================================================================\n");
 }
 
 /**
