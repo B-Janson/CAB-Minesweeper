@@ -3,7 +3,9 @@
 
 #include "constants.h"
 
-#define MAX_USERS 10
+#define MAX_USERS 10                    // how many users there are who are authenticated
+#define BACKLOG 10                      // how many pending connections queue will hold
+#define RANDOM_NUMBER_SEED 42           // seed value for the rng
 
 Player *getPlayer(char *name);
 

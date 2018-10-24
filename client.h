@@ -13,7 +13,7 @@ void showBoard();
 
 bool tileContainsMine(int x, int y);
 
-int setupConnection(int argc, char *argv[]);
+int setupConnection(char *argv[]);
 
 bool handleLogin(int socketID, char inputBuff[], char outputBuff[]);
 
@@ -21,6 +21,6 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]);
 
 void setupGame();
 
-void viewLeaderBoard(int socketID, char inputBuff[], char outputBuff[]);
+void viewLeaderBoard(int socketID, char outputBuff[]);
 
 #endif

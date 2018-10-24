@@ -509,22 +509,6 @@ Player *getPlayer(char *name) {
     return NULL;
 }
 
-//void show_leaderboard() {
-//    Score *current = leaderBoard.head;
-//
-//    printf("=======================================================\n");
-//
-//    while (current != NULL) {
-//        Player *curr_player = getPlayer(current->name);
-//        printf("%s\t\t%d seconds\t\t%d games won, %d games played\n", current->name, current->time,
-//               curr_player->gamesWon, curr_player->gamesPlayed);
-//        current = current->next;
-//    }
-//
-//    printf("=======================================================\n");
-//
-//}
-
 /**
  * The thread to run when recieving a new connection.
  * @param socketID the ID of the socket that the user has connected on

@@ -4,10 +4,8 @@
 #include <stdbool.h>
 
 #define MAXDATASIZE 50                  // max number of bytes we can get at once
-#define BACKLOG 10                      // how many pending connections queue will hold
 #define RETURNED_ERROR -1               // value sent if error occurred
 #define TERMINATE_CONNECTION 65535      // value sent/received if the connection should be terminated
-#define RANDOM_NUMBER_SEED 42           // seed value for the rng
 #define NUM_TILES_X 9                   // number of tiles across
 #define NUM_TILES_Y 9                   // number of tiles up
 #define NUM_MINES 10                    // number of mines to fill the board with
