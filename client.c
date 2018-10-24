@@ -353,7 +353,7 @@ void setupGame() {
  */
 void viewLeaderBoard(int socketID, char outputBuff[]) {
     printf("You have chosen to view the Leaderboard.\n");
-    printf("====================================================================\n");
+    printf("===================================================================\n");
     // Tell server that we want to see the leaderboard
     sendStringAndReceive(socketID, SHOW_LEADERBOARD, outputBuff);
 

@@ -21,6 +21,11 @@
  */
 LeaderBoard leaderBoard;
 
+/**
+ * Checked to see if it should continue waiting for new connections.
+ */
+bool running;
+
 
 /**
  * Receive input from client. Will sit and wait until receives communication.
@@ -237,6 +242,11 @@ void sendLeaderBoard(int socketID) {
     // Initialise buffer to send output to client
     char outputBuff[MAXDATASIZE];
 
+    if (current == NULL) {
+        sprintf(outputBuff, "\nThere is no information stored in the leaderboard. Try again later.\n\n");
+        sendString(socketID, outputBuff);
+    }
+
     // While it's not null
     while (current != NULL) {
         // Get the player pointer associated with this score's name
@@ -251,6 +261,7 @@ void sendLeaderBoard(int socketID) {
         // Move to next score in the list
         current = current->next;
     }
+
     // Send an end of message string to tell client to stop listening
     sendString(socketID, END_OF_MESSAGE);
 }
@@ -649,6 +660,7 @@ void setupPlayers() {
 void sig_handler(int signo) {
     if (signo == SIGINT) {
         printf("Received CTRL-C\n");
+        running = false;
     }
 
     signal(signo, SIG_DFL);
@@ -717,9 +729,11 @@ int main(int argc, char *argv[]) {
 
     printf("server starts listening ...\n");
 
+    running = true;
+
     /* repeat: accept, send, close the connection */
     /* for every accepted connection, use a separate process or thread to serve it */
-    while (1) {  /* main accept() loop */
+    while (running) {  /* main accept() loop */
         sin_size = sizeof(struct sockaddr_in);
         if ((new_fd = accept(sockfd, (struct sockaddr *) &their_addr, &sin_size)) == -1) {
             perror("accept");
@@ -734,7 +748,7 @@ int main(int argc, char *argv[]) {
         pthread_join(client_thread, NULL);
     }
 
-    close(new_fd);
+    printf("Exited cleanly\n");
 
     return 0;
 }

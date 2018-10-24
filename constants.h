@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#define MAXDATASIZE 50                  // max number of bytes we can get at once
+#define MAXDATASIZE 80                  // max number of bytes we can get at once
 #define RETURNED_ERROR -1               // value sent if error occurred
 #define TERMINATE_CONNECTION 65535      // value sent/received if the connection should be terminated
 #define NUM_TILES_X 9                   // number of tiles across
