@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #define MAXDATASIZE 50 // max number of bytes we can get at once
-#define ARRAY_SIZE 10 // size of the array to send
 #define BACKLOG 10     // how many pending connections queue will hold
 #define RETURNED_ERROR -1 // value sent if error occurred
 #define TERMINATE_CONNECTION 65535 // value sent/received if the connection should be terminated
@@ -15,13 +14,20 @@
 #define START_GAME "game"
 #define SHOW_LEADERBOARD "leaderboard"
 #define QUIT "quit"
+#define Y_OFFSET 'A'
+#define X_OFFSET '1'
+#define SUCCESS "1"
+#define FAIL "0"
+#define WIN_MESSAGE "WON"
+#define MINE_MESSAGE "MINE"
+#define NO_MINE_MESSAGE "NONE"
+#define END_OF_MESSAGE "-1"
 
 
 typedef struct Tile {
     int adjacentMines;
     bool revealed;
     bool isMine;
-    bool isFlag;
 } Tile;
 
 typedef struct GameState {

@@ -25,5 +25,11 @@ void setupPlayers();
 
 GameState *setupGame();
 
+void clearGame(GameState *gameState);
+
+void calculateAdjacent(GameState *gameState);
+
+int* getAdjacentTiles(int y, int x);
+
 #endif
 

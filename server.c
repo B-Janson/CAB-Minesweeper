@@ -83,65 +83,79 @@ void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y, i
     }
 }
 
+/**
+ * Method to handle an individual game of Minesweeper for the given current player
+ * @param socketID ID of the socket to communicate over
+ * @param inputBuff buffer to store what is being received from the client
+ * @param curr_player pointer to a player struct containing information about current player that is playing
+ */
 void handleGame(int socketID, char inputBuff[], Player *curr_player) {
-    printf("User %s has chosen to play a game.\n", curr_player->name);
+    // Get a new game with mines placed
     GameState *gameState = setupGame();
+    // Currently playing (hasn't lost or quit)
     bool playing = true;
-    time_t startTime;
+    // Timing variables
+    time_t startTime = time(NULL);
     time_t endTime;
     time_t totalTime;
-    startTime = time(NULL);
+
     curr_player->gamesPlayed++;
 
+    char outputBuff[MAXDATASIZE];
+
     while (playing) {
+        // Wait and receive input from client
         receiveString(socketID, inputBuff);
 
-        printf("User entered: %s\n", inputBuff);
-
         if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
+            // If they want to quit
             playing = false;
-            printf("Player wants to exit game\n");
         } else if (inputBuff[2] == 'R') {
-            int y = inputBuff[0] - 65;
-            int x = inputBuff[1] - 49;
-            printf("User wants to reveal tile %c%c %d\n", y, x, gameState->tiles[y][x].isMine);
+            // If they want to reveal a tile
+
+            // Get the coordinates they want to reveal
+            int y = inputBuff[0] - Y_OFFSET;
+            int x = inputBuff[1] - X_OFFSET;
+            printf("User wants to reveal tile %c%c %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
 
             if (tileContainsMine(gameState, y, x)) {
-                printf("Mine hit at %d %d\n", x, y);
-                sprintf(inputBuff, "MINE");
+                // They tried to reveal a mine, so store that information in buffer to send
+                sprintf(outputBuff, MINE_MESSAGE);
+                // Stop the game
                 playing = false;
             } else {
+                // No mine at location, send information about chosen location and recursive surroundings if needed.
                 int surrounding[9][9] = {{0}};
-                getSurrounding(gameState, surrounding, x, y, socketID, inputBuff);
-                printf("y:%d x:%d %d\n", y, x, gameState->tiles[y][x].adjacentMines);
-                sprintf(inputBuff, "-1");
+                getSurrounding(gameState, surrounding, x, y, socketID, outputBuff);
+                printf("y:%c x:%c adjacent:%d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].adjacentMines);
+                // Send end of message so client knows to stop receiving
+                sprintf(outputBuff, END_OF_MESSAGE);
             }
 
-            sendString(socketID, inputBuff);
-
-            printf("\n");
-
+            // Send result to client
+            sendString(socketID, outputBuff);
         } else if (inputBuff[2] == 'P') {
-            int y = inputBuff[0] - 65;
-            int x = inputBuff[1] - 49;
-            printf("User wants to place flag at %d%d %d\n", y, x, gameState->tiles[y][x].isMine);
+            // If they want to place a mine
+            int y = inputBuff[0] - Y_OFFSET;
+            int x = inputBuff[1] - X_OFFSET;
+            printf("User wants to place flag at %d%d %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
 
             if (tileContainsMine(gameState, y, x) && !gameState->tiles[y][x].revealed) {
-                printf("Mine covered at %d %d\n", x, y);
+                printf("Mine covered at %d %d\n", y, x);
                 gameState->remainingMines--;
                 gameState->tiles[y][x].revealed = true;
                 if (gameState->remainingMines == 0) {
-                    sprintf(inputBuff, "WON");
+                    sprintf(inputBuff, WIN_MESSAGE);
                     playing = false;
                     endTime = time(NULL);
                     totalTime = endTime - startTime;
                     addScore(curr_player, totalTime);
                 } else {
-                    sprintf(inputBuff, "MINE");
+                    sprintf(inputBuff, MINE_MESSAGE);
                 }
             } else {
                 printf("Not mine hit at %d %d\n", x, y);
-                sprintf(inputBuff, "NONE");
+                sprintf(inputBuff, NO_MINE_MESSAGE);
             }
 
             sendString(socketID, inputBuff);
@@ -153,182 +167,75 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
     free(gameState);
 }
 
+/**
+ * Sends the copy of the server's leaderboard to the user
+ * @param socketID ID of the socket to send over
+ */
 void sendLeaderBoard(int socketID) {
+    // Take the head of the list
     Score *current = leaderBoard.head;
 
+    // Initialise buffer to send output to client
+    char outputBuff[MAXDATASIZE];
+
+    // While it's not null
     while (current != NULL) {
+        // Get the player pointer associated with this score's name
         Player *curr_player = getPlayer(current->name);
-        char inputBuff[MAXDATASIZE];
-        sprintf(inputBuff, "%s\t\t%d seconds\t\t%d games won, %d games played\n", current->name, current->time,
+
+        // Store necessary information in buffer
+        sprintf(outputBuff, "%s\t\t%d seconds\t\t%d games won, %d games played\n", current->name, current->time,
                 curr_player->gamesWon, curr_player->gamesPlayed);
-        sendString(socketID, inputBuff);
+
+        // Send buffer
+        sendString(socketID, outputBuff);
+        // Move to next score in the list
         current = current->next;
     }
-    sendString(socketID, "-1");
+    // Send an end of message string to tell client to stop listening
+    sendString(socketID, END_OF_MESSAGE);
 }
 
-int *getAdjacentTiles(int i, int j) {
-    static int tiles[8] = {-1};
-
-    // top left
-    tiles[0] = (i - 1) * 10 + j - 1;
-    // top
-    tiles[1] = (i - 1) * 10 + j;
-    // top right
-    tiles[2] = (i - 1) * 10 + j + 1;
-    // left
-    tiles[3] = (i) * 10 + j - 1;
-    // right
-    tiles[4] = (i) * 10 + j + 1;
-    // bottom left
-    tiles[5] = (i + 1) * 10 + j - 1;
-    // bottom
-    tiles[6] = (i + 1) * 10 + j;
-    // bottom right
-    tiles[7] = (i + 1) * 10 + j + 1;
-
-    // Left hand border
-    if (j == 0) {
-        tiles[0] = -1;
-        tiles[3] = -1;
-        tiles[5] = -1;
-    }
-
-    // Right hand border
-    if (j == NUM_TILES_X - 1) {
-        tiles[2] = -1;
-        tiles[4] = -1;
-        tiles[7] = -1;
-    }
-
-    // Top border
-    if (i == 0) {
-        tiles[0] = -1;
-        tiles[1] = -1;
-        tiles[2] = -1;
-    }
-
-    // Top border
-    if (i == NUM_TILES_Y - 1) {
-        tiles[5] = -1;
-        tiles[6] = -1;
-        tiles[7] = -1;
-    }
-
-    return tiles;
-}
-
+/**
+ * Sets up a new GameState struct for a new game session and returns the pointer to that.
+ * @return pointer to new GameState struct ready to play a game
+ */
 GameState *setupGame() {
-    // allocate memory for the game state
+    // Allocate memory for the game state
     GameState *gameState = malloc(sizeof(GameState));
-    // place mines randomly
+
+    // Initialise all variables
+    clearGame(gameState);
+
+    // Place mines randomly
     placeMines(gameState);
 
-    // show the mines on the field
+    // Pre-calculate the number of adjacent mines for each tile
+    calculateAdjacent(gameState);
+
+    // Show the mines on the field
     showBoard(gameState);
-
-    // loop to show the number of mines at a location
-    char *vertical = "ABCDEFGHI";
-    printf("\n");
-    printf("    1 2 3 4 5 6 7 8 9\n");
-    printf("  -------------------\n");
-    for (int i = 0; i < NUM_TILES_Y; ++i) {
-        printf("%c | ", vertical[i]);
-        for (int j = 0; j < NUM_TILES_X; ++j) {
-            // this gets a list of coordinates of surrounding squares
-            int *adjacentTiles = getAdjacentTiles(i, j);
-            int numAdjacent = 0;
-            for (int k = 0; k < 8; ++k) {
-                // if the square actually exists (i.e. not outside field of play)
-                if (adjacentTiles[k] != -1) {
-                    // get back the x, y grid coordinate
-                    int x = adjacentTiles[k] % 10;
-                    int y = adjacentTiles[k] / 10;
-
-                    // increment the number of adjacent mines
-                    if (gameState->tiles[y][x].isMine) {
-                        numAdjacent++;
-                    }
-                }
-            }
-            gameState->tiles[i][j].adjacentMines = numAdjacent;
-            printf("%d ", numAdjacent);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    gameState->remainingMines = NUM_MINES;
 
     return gameState;
 }
 
-void Run_Thread(int socketID) {
-    bool running = true;
-    char inputBuff[MAXDATASIZE];
-    char *outputBuff = "";
-
-    // This lets the process know that when the thread dies that it should take care of itself.
-    pthread_detach(pthread_self());
-
-    // Set the seed
-    srand(RANDOM_NUMBER_SEED);
-
-    bool isAuthenticated = false;
-
-    // Get the username
-    receiveStringAndReply(socketID, inputBuff);
-
-    // Check if a user exists with that name
-    Player *curr_player = getPlayer(inputBuff);
-
-    // Get the password
-    receiveString(socketID, inputBuff);
-
-    // If we found a player with that name AND the password matches, authenticate.
-    if (curr_player != NULL && strncmp(curr_player->password, inputBuff, MAXDATASIZE) == 0) {
-        isAuthenticated = true;
-        outputBuff = "1"; // message of 1 means that it was a successful login
-        printf("User is authenticated\n");
-    }
-
-    if (!isAuthenticated) {
-        running = false;
-        outputBuff = "0";
-        printf("Player logged in with wrong credentials.\n");
-    }
-
-    sendString(socketID, outputBuff);
-
-
-    while (running) {
-        receiveStringAndReply(socketID, inputBuff);
-
-        if (strncmp(inputBuff, START_GAME, MAXDATASIZE) == 0) {
-            handleGame(socketID, inputBuff, curr_player);
-        } else if (strncmp(inputBuff, SHOW_LEADERBOARD, MAXDATASIZE) == 0) {
-            sendLeaderBoard(socketID);
-        } else if (strncmp(inputBuff, QUIT, MAXDATASIZE) == 0) {
-            running = false;
-        } else {
-            printf("Something has gone wrong.\n");
-        }
-
-        printf("Received: %s\n", inputBuff);
-    }
-
-    printf("Socket %d disconnected\n", socketID);
-    close(socketID);
-    pthread_exit(NULL);
-}
-
-
+/**
+ * Check if there is a mine at coordinates (x, y)
+ * @param gameState the gamestate struct to check for
+ * @param x the x location
+ * @param y the y location
+ * @return true if there is a mine at (x, y), otherwise false
+ */
 bool tileContainsMine(GameState *gameState, int x, int y) {
     return gameState->tiles[x][y].isMine;
 }
 
-
-void placeMines(GameState *gameState) {
+/**
+ * Sets all GameState variables to 0 or false.
+ * @param gameState Pointer to GameState struct to clear
+ */
+void clearGame(GameState *gameState) {
+    // Initialise everything to false or 0
     for (int i = 0; i < NUM_TILES_Y; ++i) {
         for (int j = 0; j < NUM_TILES_X; ++j) {
             gameState->tiles[i][j].isMine = false;
@@ -336,6 +243,14 @@ void placeMines(GameState *gameState) {
             gameState->tiles[i][j].revealed = false;
         }
     }
+}
+
+/**
+ * Places mines randomly around the board for the given GameState.
+ * @param gameState GameState struct to place the mines onto/
+ */
+void placeMines(GameState *gameState) {
+    gameState->remainingMines = NUM_MINES;
 
     for (int i = 0; i < NUM_MINES; ++i) {
         int x, y;
@@ -348,6 +263,104 @@ void placeMines(GameState *gameState) {
     }
 }
 
+/**
+ * Calculates and sets the number of adjacent mines for each (x, y) in the grid
+ * @param gameState pointer to the GameState struct to calculate
+ */
+void calculateAdjacent(GameState *gameState) {
+    // Loop through each tile
+    for (int i = 0; i < NUM_TILES_Y; ++i) {
+        for (int j = 0; j < NUM_TILES_X; ++j) {
+            // Get an array of 8 coordinates of surrounding tiles
+            int *adjacentTiles = getAdjacentTiles(i, j);
+            int numAdjacent = 0;
+
+            // Since there are maximum of 8 surrounding tiles, iterate through them all
+            for (int k = 0; k < 8; ++k) {
+                // if the square actually exists (i.e. not outside field of play)
+                if (adjacentTiles[k] != -1) {
+                    // eg. (3, 3) would be 33
+                    // want x = 3, y = 3
+                    // get back the x, y grid coordinate
+                    int x = adjacentTiles[k] % 10;
+                    int y = adjacentTiles[k] / 10;
+
+                    // increment the number of adjacent mines
+                    if (gameState->tiles[y][x].isMine) {
+                        numAdjacent++;
+                    }
+                }
+            }
+
+            // Set the number of adjacent at this point to the calculated amount
+            gameState->tiles[i][j].adjacentMines = numAdjacent;
+        }
+    }
+}
+
+/**
+ * Returns an array of 8 integers, indicating the xy location of all surrounding tiles of point (i, j).
+ * Eg. if i = 3, j = 3, returns {22, 23, 24, 32, 34, 42, 43, 44}
+ * If on the edge of the playing field, returns -1 for all locations outside of game board.
+ * @param y y location to check surrounding
+ * @param x x location to check surrounding
+ * @return array of 8 integers as outlined above.
+ */
+int *getAdjacentTiles(int y, int x) {
+    static int tiles[8] = {-1};
+
+    // top left
+    tiles[0] = (y - 1) * 10 + x - 1;
+    // top
+    tiles[1] = (y - 1) * 10 + x;
+    // top right
+    tiles[2] = (y - 1) * 10 + x + 1;
+    // left
+    tiles[3] = (y) * 10 + x - 1;
+    // right
+    tiles[4] = (y) * 10 + x + 1;
+    // bottom left
+    tiles[5] = (y + 1) * 10 + x - 1;
+    // bottom
+    tiles[6] = (y + 1) * 10 + x;
+    // bottom right
+    tiles[7] = (y + 1) * 10 + x + 1;
+
+    // Left hand border
+    if (x == 0) {
+        tiles[0] = -1;
+        tiles[3] = -1;
+        tiles[5] = -1;
+    }
+
+    // Right hand border
+    if (x == NUM_TILES_X - 1) {
+        tiles[2] = -1;
+        tiles[4] = -1;
+        tiles[7] = -1;
+    }
+
+    // Top border
+    if (y == 0) {
+        tiles[0] = -1;
+        tiles[1] = -1;
+        tiles[2] = -1;
+    }
+
+    // Top border
+    if (y == NUM_TILES_Y - 1) {
+        tiles[5] = -1;
+        tiles[6] = -1;
+        tiles[7] = -1;
+    }
+
+    return tiles;
+}
+
+/**
+ * Debug function to show the current state of the game on the server side.
+ * @param gameState pointer to GameState struct, containing all game information
+ */
 void showBoard(GameState *gameState) {
     char *vertical = "ABCDEFGHI";
     printf("Remaining mines: %d\n", 10);
@@ -368,52 +381,71 @@ void showBoard(GameState *gameState) {
     printf("\n");
 }
 
-
+/**
+ * Adds the given score to the given player and increments the number of games won.
+ * This method inserts the player's score in the correct order (shortest at the end).
+ * @param currentPlayer pointer to a player struct
+ * @param time time taken to complete the game
+ */
 void addScore(Player *currentPlayer, int time) {
+    // Allocate memory for this new score
+    Score *newScore = malloc(sizeof(Score));
+    // If the allocation failed, return and deal with this.
+    if (newScore == NULL) {
+        printf("%s\n", "Error");
+        return;
+    }
 
+    // Increment number of games won by player
     currentPlayer->gamesWon++;
 
-    if (leaderBoard.head == NULL) {
-        leaderBoard.head = malloc(sizeof(Score));
-        if (leaderBoard.head == NULL) {
-            printf("%s\n", "Error");
-            return;
-        }
-        leaderBoard.head->name = currentPlayer->name;
-        leaderBoard.head->time = time;
-        leaderBoard.head->next = NULL;
+    // Set all values for this new score
+    newScore->name = currentPlayer->name;
+    newScore->time = time;
+    newScore->next = NULL;
 
-        return;
-    }
-
+    // Get the current head of the list (longest time taken)
     Score *current = leaderBoard.head;
 
-    if (time > current->time) {
-        leaderBoard.head = malloc(sizeof(Score));
-        if (leaderBoard.head == NULL) {
-            printf("%s\n", "Error");
-            return;
-        }
-        leaderBoard.head->name = currentPlayer->name;
-        leaderBoard.head->time = time;
-        leaderBoard.head->next = current;
+    // If this is the first score added to the leaderboard
+    if (current == NULL) {
+        // Set the head of the leaderboard to be this score
+        leaderBoard.head = newScore;
+
+        // We are done so exit out
         return;
     }
 
+    // There are currently scores already in this list (and they are sorted by longest time taken to shortest time
+    // taken.
+
+    // If the new time is longer than the current (head of the list)
+    if (time > current->time) {
+        // Set the new score's next to be the current head of the list
+        newScore->next = current;
+
+        // Set the head of the leaderboard to be this new score
+        leaderBoard.head = newScore;
+
+        // We are done so exit out
+        return;
+    }
+
+    // Need to find where this new score should be located. Needs to be so that prev_time > time > next_time or end
+    // of list.
+
+    // So iterate through list until the next is either null or has a lower time than new score.
     while (current->next != NULL && current->next->time > time) {
         current = current->next;
     }
 
-    Score *next = current->next;
+    // At this point, new score needs to go in between current and current->next
 
-    current->next = malloc(sizeof(Score));
-    if (leaderBoard.head == NULL) {
-        printf("%s\n", "Error");
-        return;
-    }
-    current->next->name = currentPlayer->name;
-    current->next->time = time;
-    current->next->next = next;
+    // Set next of new score to be what is currently next.
+    newScore->next = current->next;
+
+    // Set next of current to new score.
+    current->next = newScore;
 }
 
 //void show_leaderboard() {
@@ -432,17 +464,98 @@ void addScore(Player *currentPlayer, int time) {
 //
 //}
 
+/**
+ * The thread to run when recieving a new connection.
+ * @param socketID the ID of the socket that the user has connected on
+ */
+void Run_Thread(int socketID) {
+    // Boolean to keep track of whether this thread should continue to run
+    bool running = true;
+    // Buffer to store what is received from the client
+    char inputBuff[MAXDATASIZE];
+    // Buffer to store what is sent to the client
+    char outputBuff[MAXDATASIZE];
 
+    // This lets the process know that when the thread dies that it should take care of itself.
+    pthread_detach(pthread_self());
+
+    // Set the seed
+    srand(RANDOM_NUMBER_SEED);
+
+    // A check to see if login details were correct
+    bool isAuthenticated = false;
+
+    // Get the username and put into inputBuff
+    receiveStringAndReply(socketID, inputBuff);
+
+    // Check if a user exists with that name (i.e. if NULL, no player exists with that name)
+    Player *curr_player = getPlayer(inputBuff);
+
+    // Get the password and put into inputBuff
+    receiveString(socketID, inputBuff);
+
+    // If we found a player with that name AND the password matches, authenticate.
+    if (curr_player != NULL && strncmp(curr_player->password, inputBuff, MAXDATASIZE) == 0) {
+        isAuthenticated = true;
+        // Message that we will send to client is login success
+        sprintf(outputBuff, SUCCESS);
+    }
+
+    if (!isAuthenticated) {
+        // Won't enter the running loop
+        running = false;
+        // Message that we will send to client is login failure
+        sprintf(outputBuff, FAIL);
+    }
+
+    // Send the authentication outcome to client
+    sendString(socketID, outputBuff);
+
+    // If login successful and haven't terminated connection
+    while (running) {
+        // Receive input from client and store in inputBuff
+        receiveStringAndReply(socketID, inputBuff);
+
+        if (strncmp(inputBuff, START_GAME, MAXDATASIZE) == 0) {
+            // If they want to start a new game
+            handleGame(socketID, inputBuff, curr_player);
+        } else if (strncmp(inputBuff, SHOW_LEADERBOARD, MAXDATASIZE) == 0) {
+            // If they want to see the leaderboard
+            sendLeaderBoard(socketID);
+        } else if (strncmp(inputBuff, QUIT, MAXDATASIZE) == 0) {
+            // If they chose to quit
+            running = false;
+        } else {
+            // Error check in case something has not been accounted for properly.
+            printf("Something has gone wrong.\n");
+        }
+    }
+
+    printf("Socket %d disconnected\n", socketID);
+    close(socketID);
+    pthread_exit(NULL);
+}
+
+/**
+ * Sets up the login information for players as read in from Authentication.txt
+ * Puts these players into the leaderboard and makes them available to log in as.
+ */
 void setupPlayers() {
+    // Set the head of the score list to be null
     leaderBoard.head = NULL;
 
+    // Get an array of users initialised to empty values
     Player *players = calloc(MAX_USERS, sizeof(Player));
 
+    // Input buffer to read each line from file
     char buff[100] = "";
-    int i = 0;
+    // Count of which user we are currently at
+    int currentPlayer = 0;
+    // Open the file
     FILE *file;
     file = fopen("Authentication.txt", "r");
 
+    // If an error occurred while opening file, error out and exit
     if (!file) {
         perror("fopen");
         exit(EXIT_FAILURE);
@@ -451,21 +564,28 @@ void setupPlayers() {
     // Ignore the first line of the file.
     fgets(buff, 255, file);
 
+    // Read each line
     while ((fgets(buff, 255, file)) != NULL) {
+        // String to capture each token
         char *tok;
+        // Get first string (username) and copy to player struct
         tok = strtok(buff, "\n\t\r ");
-        strcpy(players[i].name, tok);
+        strcpy(players[currentPlayer].name, tok);
 
+        // Get second string (password) and copy to player struct
         tok = strtok(NULL, "\n\t\r ");
-        strcpy(players[i].password, tok);
+        strcpy(players[currentPlayer].password, tok);
 
-        i++;
+        // Move to next player
+        currentPlayer++;
     }
 
     fclose(file);
 
-    for (i = 0; i < MAX_USERS; ++i) {
-        leaderBoard.players[i] = &players[i];
+    // TODO this could probably be improved but is ok for now
+    // Store these players in the leaderboard struct
+    for (currentPlayer = 0; currentPlayer < MAX_USERS; ++currentPlayer) {
+        leaderBoard.players[currentPlayer] = &players[currentPlayer];
     }
 }
 
@@ -535,5 +655,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
-
