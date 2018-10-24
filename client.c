@@ -187,17 +187,30 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
             } else {
                 inputBuff[2] = 'P';
                 inputBuff[3] = '\0';
-                sendStringAndReceive(socketID, inputBuff, outputBuff);
 
-                int y = inputBuff[0] - 'A';
-                int x = inputBuff[1] - '1';
+                int y = inputBuff[0] - 65;
+                int x = inputBuff[1] - 49;
 
-                if (strncmp(outputBuff, "MINE", MAXDATASIZE) == 0) {
-                    printf("MINE\n");
-                    gameState->remainingMines--;
-                    gameState->tiles[y][x].isMine = true;
+                if (gameState->tiles[y][x].isMine == true) {
+                    printf("Already placed flag at this location.\n");
                 } else {
-                    printf("NO MINE\n");
+                    sendStringAndReceive(socketID, inputBuff, outputBuff);
+
+                    int y = inputBuff[0] - 'A';
+                    int x = inputBuff[1] - '1';
+
+                    if (strncmp(outputBuff, "MINE", MAXDATASIZE) == 0) {
+                        printf("MINE\n");
+                        gameState->remainingMines--;
+                        gameState->tiles[y][x].isMine = true;
+                    } else if (strncmp(outputBuff, "WON", MAXDATASIZE) == 0) {
+                        gameState->remainingMines--;
+                        gameState->tiles[y][x].isMine = true;
+                        printf("Congratulations you have won!\n");
+                        playing = false;
+                    } else {
+                        printf("NO MINE\n");
+                    }
                 }
             }
         } else if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
