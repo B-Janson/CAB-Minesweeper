@@ -15,17 +15,18 @@
 
 #include "constants.h"
 
+/**
+ * LeaderBoard struct to store all server information about scores.
+ */
 LeaderBoard leaderBoard;
 
-Player *getPlayer(char *name) {
-    for (int i = 0; i < MAX_USERS; ++i) {
-        if (strncmp(leaderBoard.players[i]->name, name, MAXDATASIZE) == 0) {
-            return leaderBoard.players[i];
-        }
-    }
-    return NULL;
-}
 
+/**
+ * Receive input from client. Will sit and wait until receives communication.
+ * @param socket_id ID of the socket to communicate over
+ * @param buf buffer to store what is received into
+ * @return buffer containing message received
+ */
 char *receiveString(int socket_id, char *buf) {
     int number_of_bytes = 0;
 
@@ -39,6 +40,11 @@ char *receiveString(int socket_id, char *buf) {
     return buf;
 }
 
+/**
+ * Send a string to a given socket
+ * @param socket_id ID of the socket to communicate over
+ * @param message message to send
+ */
 void sendString(int socket_id, char *message) {
     if (send(socket_id, message, MAXDATASIZE, 0) == -1) {
         perror("send");
@@ -46,6 +52,12 @@ void sendString(int socket_id, char *message) {
     //printf("%s", message);
 }
 
+/**
+ * Waits for input from client and then sends back a confirmation straight away
+ * @param socket_id ID of socket to communicate over
+ * @param buf buffer to receive into
+ * @return recieved message
+ */
 char *receiveStringAndReply(int socket_id, char *buf) {
     receiveString(socket_id, buf);
 
@@ -54,23 +66,41 @@ char *receiveStringAndReply(int socket_id, char *buf) {
     return buf;
 }
 
-void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y, int socketID, char *inputBuff) {
+/**
+ * Recursive algorithm to determine the state of all adjacent tiles. Whilst the number of adjacent mines at the given
+ * x, y is 0, traverses all directly adjacent (including diagonals) tiles until an edge is hit or a non-zero amount
+ * is discovered. Sends each update as it traverses.
+ * @param gameState pointer to current game
+ * @param surrounding integer representing discovered numAdjacent at the location, fills up as game board is traversed
+ * @param x x location to check
+ * @param y y location to check
+ * @param socketID ID of the socket to communicate on
+ * @param inputBuff buffer used for communication
+ */
+void getSurrounding(GameState *gameState, int surrounding[NUM_TILES_X][NUM_TILES_Y], int x, int y, int socketID,
+                    char *inputBuff) {
+    // If current location is outside of game board, return
     if (x < 0 || x >= NUM_TILES_X || y < 0 || y >= NUM_TILES_Y) {
         return;
     }
 
+    // If we have already been here, return
     if (gameState->tiles[y][x].revealed) {
         return;
     }
 
+    // Update the number adjacent for the current location based on actual amount
     surrounding[y][x] = gameState->tiles[y][x].adjacentMines;
+    // Set this to be revealed so we don't keep checking the same location
     gameState->tiles[y][x].revealed = true;
 
-//    printf("%d%d%d\n", x, y, surrounding[y][x]);
+    // Store the information needed for the client
     sprintf(inputBuff, "%d%d%d", x, y, surrounding[y][x]);
 
+    // Send this information to the client
     sendString(socketID, inputBuff);
 
+    // If we hit a zero, need to do the same process for all 8 surrounding locations
     if (surrounding[y][x] == 0) {
         getSurrounding(gameState, surrounding, x - 1, y - 1, socketID, inputBuff);
         getSurrounding(gameState, surrounding, x, y - 1, socketID, inputBuff);
@@ -90,6 +120,8 @@ void getSurrounding(GameState *gameState, int surrounding[9][9], int x, int y, i
  * @param curr_player pointer to a player struct containing information about current player that is playing
  */
 void handleGame(int socketID, char inputBuff[], Player *curr_player) {
+    // TODO remove print statements
+    // TODO possibly extract to methods
     // Get a new game with mines placed
     GameState *gameState = setupGame();
     // Currently playing (hasn't lost or quit)
@@ -125,7 +157,7 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
                 playing = false;
             } else {
                 // No mine at location, send information about chosen location and recursive surroundings if needed.
-                int surrounding[9][9] = {{0}};
+                int surrounding[NUM_TILES_Y][NUM_TILES_X] = {{0}};
                 getSurrounding(gameState, surrounding, x, y, socketID, outputBuff);
                 printf("y:%c x:%c adjacent:%d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].adjacentMines);
                 // Send end of message so client knows to stop receiving
@@ -136,34 +168,46 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
             sendString(socketID, outputBuff);
         } else if (inputBuff[2] == 'P') {
             // If they want to place a mine
+
+            // Get the coordinates they want to place a mine at
             int y = inputBuff[0] - Y_OFFSET;
             int x = inputBuff[1] - X_OFFSET;
             printf("User wants to place flag at %d%d %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
 
+            // If there is a mine at this location and they haven't already revealed it
             if (tileContainsMine(gameState, y, x) && !gameState->tiles[y][x].revealed) {
-                printf("Mine covered at %d %d\n", y, x);
                 gameState->remainingMines--;
                 gameState->tiles[y][x].revealed = true;
+
+                // Win condition
                 if (gameState->remainingMines == 0) {
+                    // Store win message in buffer to send
                     sprintf(inputBuff, WIN_MESSAGE);
+                    // Stop the game
                     playing = false;
+                    // Calculate the score
                     endTime = time(NULL);
                     totalTime = endTime - startTime;
+                    // Add the score to the leaderboard
                     addScore(curr_player, totalTime);
                 } else {
+                    // Tell user that there was a mine at this location
                     sprintf(inputBuff, MINE_MESSAGE);
                 }
             } else {
-                printf("Not mine hit at %d %d\n", x, y);
+                // No mine at this location
                 sprintf(inputBuff, NO_MINE_MESSAGE);
             }
 
+            // Send relevant information to user
             sendString(socketID, inputBuff);
         } else {
+            // Error checking for debugging
             printf("This should not happen.\n");
         }
     }
 
+    // Free the memory taken up by the game
     free(gameState);
 }
 
@@ -446,6 +490,23 @@ void addScore(Player *currentPlayer, int time) {
 
     // Set next of current to new score.
     current->next = newScore;
+}
+
+/**
+ * Returns a pointer to the player struct that has the given name as input. If no player with this name, returns NULL.
+ * @param name string that is player's name
+ * @return pointer to this player object, or NULL if no player exists with that name.
+ */
+Player *getPlayer(char *name) {
+    // Go through all stored players and if the name matches, return that player
+    for (int i = 0; i < MAX_USERS; ++i) {
+        if (strncmp(leaderBoard.players[i]->name, name, MAXDATASIZE) == 0) {
+            return leaderBoard.players[i];
+        }
+    }
+
+    // If we couldn't find a player with that name, return NULL
+    return NULL;
 }
 
 //void show_leaderboard() {
