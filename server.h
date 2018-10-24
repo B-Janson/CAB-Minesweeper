@@ -3,6 +3,8 @@
 
 #include "constants.h"
 
+#define MAX_USERS 10
+
 Player *getPlayer(char *name);
 
 char *receiveString(int socket_id, char *buf);
@@ -15,11 +17,11 @@ bool tileContainsMine(GameState *gameState, int x, int y);
 
 void placeMines(GameState *gameState);
 
-void addScore(char *name, int time);
+void addScore(Player *currentPlayer, int time);
 
-void show_board(GameState *gameState);
+void showBoard(GameState *gameState);
 
-void setup_players();
+void setupPlayers();
 
 GameState *setupGame();
 

@@ -169,9 +169,6 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                         printf("x:%d y:%d adj:%d\n", x, y, adjacent);
                         receiveString(socketID, outputBuff);
                     }
-//                    int numAdjacent = atoi(&outputBuff[0]);
-//                    printf("%d %d %d \n", x, y, numAdjacent);
-//                    gameState->tiles[y][x].adjacentMines = numAdjacent;
                 }
 
 
@@ -215,7 +212,7 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
             }
         } else if (strncmp(inputBuff, "Q", MAXDATASIZE) == 0) {
             playing = false;
-            sendStringAndReceive(socketID, "Q", outputBuff);
+            sendString(socketID, "Q");
         } else {
             // User has chosen an invalid option
             printf("That is not a valid option.\n");

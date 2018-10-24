@@ -36,8 +36,8 @@ typedef struct Score {
 } Score;
 
 typedef struct Player {
-    char *name;
-    char *password;
+    char name[20];
+    char password[20];
     int gamesPlayed;
     int gamesWon;
 } Player;
@@ -48,6 +48,3 @@ typedef struct LeaderBoard {
 } LeaderBoard;
 
 #endif
-
-
-
