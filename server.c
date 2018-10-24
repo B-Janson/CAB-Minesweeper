@@ -15,12 +15,28 @@
 
 #include "constants.h"
 
+#define MAX_USERS 10
+
 LeaderBoard leaderBoard;
+
+typedef struct users new_user;
+
+struct users {
+    char name[20];
+    char password[20];
+    int gamesPlayed;
+    int gamesWon;
+} users;
+
+new_user *initialise_user(int n) {
+    return calloc(n, sizeof(new_user));
+}
 
 
 Player *getPlayer(char *name) {
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < MAX_USERS; ++i) {
         if (strncmp(leaderBoard.players[i]->name, name, MAXDATASIZE) == 0) {
+            leaderBoard.players[i]->name = name;
             return leaderBoard.players[i];
         }
     }
@@ -88,6 +104,10 @@ void handleGame(int socketID, char inputBuff[]) {
     printf("User has chosen to play a game.\n");
     GameState *gameState = setupGame();
     bool playing = true;
+    time_t startTime;
+    time_t endTime;
+    time_t totalTime;
+    startTime = time(NULL);
 
     while (playing) {
 //        receiveStringAndReply(socketID, inputBuff);
@@ -145,9 +165,17 @@ void handleGame(int socketID, char inputBuff[]) {
 
             if (tileContainsMine(gameState, y, x)) {
                 printf("Mine hit at %d %d\n", x, y);
-                gameState->remainingMines--;
+                gameState->remainingMines-=10;
                 gameState->tiles[y][x].revealed = true;
-                sprintf(inputBuff, "MINE");
+                if (gameState->remainingMines == 0) {
+                    sprintf(inputBuff, "WON");
+                    playing = false;
+                    endTime = time(NULL);
+                    totalTime = endTime - startTime;
+                    addScore("Maolin", totalTime);
+                } else {
+                    sprintf(inputBuff, "MINE");
+                }
             } else {
                 printf("Not mine hit at %d %d\n", x, y);
                 sprintf(inputBuff, "NONE");
@@ -295,6 +323,8 @@ void Run_Thread(int socketID) {
     // Check if a user exists with that name
     Player *curr_player = getPlayer(inputBuff);
 
+    // printf("%s\n", curr_player->password);
+
     // Get the password
     receiveString(socketID, inputBuff);
 
@@ -304,6 +334,8 @@ void Run_Thread(int socketID) {
         outputBuff = "1"; // message of 1 means that it was a successful login
         printf("User is authenticated\n");
     }
+
+    isAuthenticated = true;
 
     if (!isAuthenticated) {
         running = false;
@@ -349,6 +381,7 @@ void Run_Thread(int socketID) {
     addScore("Maolin", 1000);
     addScore("Maolin", 26);
     addScore("Maolin", 15);
+
 
     while (running) {
         receiveStringAndReply(socketID, inputBuff);
@@ -488,13 +521,145 @@ void show_leaderboard() {
 
 
 void setup_players() {
-    leaderBoard.head = NULL;
+    // printf("hi");
+    // leaderBoard.head = NULL;
 
-    leaderBoard.players[0] = malloc(sizeof(Player));
-    leaderBoard.players[0]->name = "Maolin";
-    leaderBoard.players[0]->password = "111111";
-    leaderBoard.players[0]->gamesWon = 0;
-    leaderBoard.players[0]->gamesPlayed = 0;
+    // printf("Hi");
+
+    
+
+    // printf("hi");
+
+    new_user *users = initialise_user(MAX_USERS);
+
+    FILE *f;
+    f = fopen("Authentication.txt", "r");
+    char id[20];
+    char password[20];
+
+    int c = 0;
+    int line = 0;
+    while (!feof(f)) {
+        c = fgetc(f);
+        if (c=='\n') {
+            line++;
+        }
+    }
+
+    rewind(f);
+    char buffer[255];
+    int token = 0;
+
+    fgets(buffer, 255, f);
+    int i = 0;
+
+    while(fgets(buffer, 255, f) != NULL) {
+        char *tok = strtok(buffer, "\n\t\r ");
+        
+        while (tok) {
+            token++;
+            if (token == 1) {
+                strcpy(users[i].name, tok);
+                // strcpy(leaderBoard.players[i]->name, tok);
+            } else if(token == 2) {
+                strcpy(users[i].password, tok);
+                // strcpy(leaderBoard.players[playerNo]->password, passwords[i]);
+            }
+            tok = strtok(NULL, "\n\t");
+        }
+        token = 0;
+        i++;
+        if (feof(f)) {
+            break;
+        }
+    }
+
+    // while (j!=i-1) {
+    //     fscanf(f, "%s %s", leaderBoard.players[j]->name, leaderBoard.players[j]->password);
+    //     j++;
+    // }
+
+    fclose(f);
+
+    //printf("%d", sizeof(users));
+
+    // for (int i = 0; i < sizeof(users); i++) {
+    //     printf("%s\n", users[i].name);
+    //     printf("%s\n", users[i].password);
+    // }
+
+    for (int i = 0; i < MAX_USERS; i++) {
+        leaderBoard.players[i] = malloc(sizeof(Player));
+        leaderBoard.players[i]->gamesWon = 0;
+        leaderBoard.players[i]->gamesPlayed = 0;
+        leaderBoard.players[i]->name = users[i].name;
+        leaderBoard.players[i]->password = users[i].password;
+    }
+
+    // printf("Hi\n");
+
+    //printf("%s\n", users[8].name);
+    printf("%sblah\n", leaderBoard.players[0]->name);
+    printf("%sblah\n", leaderBoard.players[1]->name);
+    printf("%sblah\n", leaderBoard.players[2]->name);
+    printf("%sblah\n", leaderBoard.players[3]->name);
+    printf("%sblah\n", leaderBoard.players[4]->name);
+    printf("%sblah\n", leaderBoard.players[5]->name);
+    printf("%sblah\n", leaderBoard.players[6]->name);
+    printf("%sblah\n", leaderBoard.players[7]->name);
+    printf("%sblah\n", leaderBoard.players[8]->name);
+    printf("%sblah\n", leaderBoard.players[9]->name);
+
+    printf("%s\n", leaderBoard.players[0]->password);
+    printf("%sblah\n", leaderBoard.players[1]->password);
+    printf("%sblah\n", leaderBoard.players[2]->password);
+    printf("%sblah\n", leaderBoard.players[3]->password);
+    printf("%sblah\n", leaderBoard.players[4]->password);
+    printf("%sblah\n", leaderBoard.players[5]->password);
+    printf("%sblah\n", leaderBoard.players[6]->password);
+    printf("%sblah\n", leaderBoard.players[7]->password);
+    printf("%sblah\n", leaderBoard.players[8]->password);
+    printf("%sblah\n", leaderBoard.players[9]->password);
+
+
+    // addScore(leaderBoard.players[0], 25);
+    // addScore("Maolin", 50);
+    // addScore("Maolin", 2);
+    // addScore("Maolin", 1000);
+    // addScore("Maolin", 26);
+    // addScore("Maolin", 15);
+
+    // printf("%d", leaderBoard.players[0]->gamesWon);
+
+    // printf("%s%s", leaderBoard.players[i]->name, leaderBoard.players[0]->password);
+
+    // printf(leaderBoard.players[0]->name);
+    // printf(leaderBoard.players[0]->password);
+    // printf(leaderBoard.players[1]->name);
+    // printf(leaderBoard.players[1]->password);
+    // printf(leaderBoard.players[2]->name);
+    // printf(leaderBoard.players[2]->password);
+    // printf(leaderBoard.players[3]->name);
+    // printf(leaderBoard.players[3]->password);
+    // printf(leaderBoard.players[4]->name);
+    // printf(leaderBoard.players[4]->password);
+
+
+    // while (fgets(x, 100, f) != NULL) {
+    //     printf("%s", x);
+    // }
+    // fclose(f);
+
+
+    //leaderBoard.head = NULL;
+
+
+
+    // leaderBoard.players[0] = malloc(sizeof(Player));
+    // leaderBoard.players[0]->name = "Maolin";
+    // leaderBoard.players[0]->password = "111111";
+    // leaderBoard.players[0]->gamesWon = 0;
+    // leaderBoard.players[0]->gamesPlayed = 0;
 
     return;
 
