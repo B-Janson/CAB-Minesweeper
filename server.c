@@ -462,7 +462,7 @@ void addScore(Player *currentPlayer, int time) {
     Score *newScore = malloc(sizeof(Score));
     // If the allocation failed, return and deal with this.
     if (newScore == NULL) {
-        printf("%s\n", "Error");
+        printf("%s\n", "Error: Unable to save score due to lack of memory.");
         return;
     }
 
@@ -509,6 +509,21 @@ void addScore(Player *currentPlayer, int time) {
         current = current->next;
     }
 
+    // Iterate through until either the score is lower or the number of the games won is greater
+    while (current->next != NULL && current->next->time == time &&
+           getPlayer(current->next->name)->gamesWon < currentPlayer->gamesWon) {
+        current = current->next;
+    }
+
+    // Iterate through until either the score is lower or the number of the games won is greater or the new name is
+    // alphabetically after the current next
+    while (current->next != NULL
+           && current->next->time == time
+           && getPlayer(current->next->name)->gamesWon == currentPlayer->gamesWon
+           && strncmp(getPlayer(current->next->name)->name, currentPlayer->name, MAXDATASIZE) < 0) {
+        current = current->next;
+    }
+
     // At this point, new score needs to go in between current and current->next
 
     // Set next of new score to be what is currently next.
@@ -541,7 +556,7 @@ Player *getPlayer(char *name) {
  */
 void *runThread(void *arg) {
 
-    int socketID = *(int *)arg;
+    int socketID = *(int *) arg;
     // Boolean to keep track of whether this thread should continue to run
     bool running = true;
     // Buffer to store what is received from the client
@@ -746,7 +761,7 @@ int main(int argc, char *argv[]) {
         // Create a thread to accept client
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_create(client_thread, &attr, runThread, (void *)&new_fd);
+        pthread_create(client_thread, &attr, runThread, (void *) &new_fd);
         pthread_join(*client_thread, NULL);
     }
 
