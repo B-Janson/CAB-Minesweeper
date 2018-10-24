@@ -24,7 +24,7 @@ LeaderBoard leaderBoard;
 /**
  * Checked to see if it should continue waiting for new connections.
  */
-bool running;
+bool serverRunning;
 
 
 /**
@@ -222,8 +222,8 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
             // Send relevant information to user
             sendString(socketID, inputBuff);
         } else {
-            // Error checking for debugging
-            printf("This should not happen.\n");
+            // User has disconnected improperly
+            playing = false;
         }
     }
 
@@ -539,7 +539,9 @@ Player *getPlayer(char *name) {
  * The thread to run when recieving a new connection.
  * @param socketID the ID of the socket that the user has connected on
  */
-void Run_Thread(int socketID) {
+void *runThread(void *arg) {
+
+    int socketID = *(int *)arg;
     // Boolean to keep track of whether this thread should continue to run
     bool running = true;
     // Buffer to store what is received from the client
@@ -594,8 +596,8 @@ void Run_Thread(int socketID) {
             // If they chose to quit
             running = false;
         } else {
-            // Error check in case something has not been accounted for properly.
-            printf("Something has gone wrong.\n");
+            // User has disconnected improperly.
+            running = false;
         }
     }
 
@@ -660,7 +662,7 @@ void setupPlayers() {
 void sig_handler(int signo) {
     if (signo == SIGINT) {
         printf("Received CTRL-C\n");
-        running = false;
+        serverRunning = false;
     }
 
     signal(signo, SIG_DFL);
@@ -729,11 +731,11 @@ int main(int argc, char *argv[]) {
 
     printf("server starts listening ...\n");
 
-    running = true;
+    serverRunning = true;
 
     /* repeat: accept, send, close the connection */
     /* for every accepted connection, use a separate process or thread to serve it */
-    while (running) {  /* main accept() loop */
+    while (serverRunning) {  /* main accept() loop */
         sin_size = sizeof(struct sockaddr_in);
         if ((new_fd = accept(sockfd, (struct sockaddr *) &their_addr, &sin_size)) == -1) {
             perror("accept");
@@ -744,7 +746,7 @@ int main(int argc, char *argv[]) {
         // Create a thread to accept client
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_create(&client_thread, &attr, Run_Thread, new_fd);
+        pthread_create(&client_thread, &attr, runThread, (void *)&new_fd);
         pthread_join(client_thread, NULL);
     }
 
