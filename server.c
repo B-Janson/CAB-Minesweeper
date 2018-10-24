@@ -676,7 +676,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Thread and thread attributes */
-    pthread_t client_thread;
+    pthread_t *client_thread = malloc(sizeof(pthread_t));
 
     int sockfd, new_fd;  /* listen on sock_fd, new connection on new_fd */
     struct sockaddr_in my_addr;    /* my address information */
@@ -746,8 +746,8 @@ int main(int argc, char *argv[]) {
         // Create a thread to accept client
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_create(&client_thread, &attr, runThread, (void *)&new_fd);
-        pthread_join(client_thread, NULL);
+        pthread_create(client_thread, &attr, runThread, (void *)&new_fd);
+        pthread_join(*client_thread, NULL);
     }
 
     printf("Exited cleanly\n");
