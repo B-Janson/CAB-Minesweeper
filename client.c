@@ -234,7 +234,6 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                     while (strncmp(outputBuff, END_OF_MESSAGE, MAXDATASIZE) != 0) {
                         receiveString(socketID, outputBuff);
                         if (strncmp(outputBuff, END_OF_MESSAGE, MAXDATASIZE) != 0) {
-                            printf("%s\n", outputBuff);
                             int i = outputBuff[0] - '0';
                             int j = outputBuff[1] - '0';
                             gameState->tiles[i][j].isMine = true;

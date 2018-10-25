@@ -55,7 +55,6 @@ void sendString(int socket_id, char *message) {
     if (send(socket_id, message, MAXDATASIZE, 0) == -1) {
         perror("send");
     }
-    //printf("%s", message);
 }
 
 /**
@@ -154,7 +153,7 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
             // Get the coordinates they want to reveal
             int y = inputBuff[0] - Y_OFFSET;
             int x = inputBuff[1] - X_OFFSET;
-            printf("User wants to reveal tile %c%c %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
+//            printf("User wants to reveal tile %c%c %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
 
             if (tileContainsMine(gameState, y, x)) {
                 // They tried to reveal a mine, so store that information in buffer to send
@@ -179,7 +178,7 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
                 // No mine at location, send information about chosen location and recursive surroundings if needed.
                 int surrounding[NUM_TILES_Y][NUM_TILES_X] = {{0}};
                 getSurrounding(gameState, surrounding, x, y, socketID, outputBuff);
-                printf("y:%c x:%c adjacent:%d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].adjacentMines);
+//                printf("y:%c x:%c adjacent:%d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].adjacentMines);
                 // Send end of message so client knows to stop receiving
                 sprintf(outputBuff, END_OF_MESSAGE);
             }
@@ -192,7 +191,7 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
             // Get the coordinates they want to place a mine at
             int y = inputBuff[0] - Y_OFFSET;
             int x = inputBuff[1] - X_OFFSET;
-            printf("User wants to place flag at %d%d %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
+//            printf("User wants to place flag at %d%d %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
 
             // If there is a mine at this location and they haven't already revealed it
             if (tileContainsMine(gameState, y, x) && !gameState->tiles[y][x].revealed) {
@@ -284,7 +283,7 @@ GameState *setupGame() {
     calculateAdjacent(gameState);
 
     // Show the mines on the field
-    showBoard(gameState);
+//    showBoard(gameState);
 
     return gameState;
 }
@@ -652,14 +651,15 @@ void setupPlayers() {
     // Read each line
     while ((fgets(buff, 255, file)) != NULL) {
         // String to capture each token
-        char *tok;
+        char *token;
+
         // Get first string (username) and copy to player struct
-        tok = strtok(buff, "\n\t\r ");
-        strcpy(players[currentPlayer].name, tok);
+        token = strtok(buff, "\n\t\r ");
+        strcpy(players[currentPlayer].name, token);
 
         // Get second string (password) and copy to player struct
-        tok = strtok(NULL, "\n\t\r ");
-        strcpy(players[currentPlayer].password, tok);
+        token = strtok(NULL, "\n\t\r ");
+        strcpy(players[currentPlayer].password, token);
 
         // Move to next player
         currentPlayer++;
@@ -678,6 +678,7 @@ void sig_handler(int signo) {
     if (signo == SIGINT) {
         printf("Received CTRL-C\n");
         serverRunning = false;
+        free(&leaderBoard);
     }
 
     signal(signo, SIG_DFL);
@@ -687,7 +688,7 @@ void sig_handler(int signo) {
 int main(int argc, char *argv[]) {
     // Set up SIGINT
     if (signal(SIGINT, sig_handler) == SIG_ERR) {
-        printf("Won't catch SIGINT\n");
+//        printf("Won't catch SIGINT\n");
     }
 
     /* Thread and thread attributes */
