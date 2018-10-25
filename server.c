@@ -125,7 +125,6 @@ void getSurrounding(GameState *gameState, int surrounding[NUM_TILES_X][NUM_TILES
  * @param curr_player pointer to a player struct containing information about current player that is playing
  */
 void handleGame(int socketID, char inputBuff[], Player *curr_player) {
-    // TODO remove print statements
     // TODO possibly extract to methods
     // Get a new game with mines placed
     GameState *gameState = setupGame();
@@ -153,7 +152,6 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
             // Get the coordinates they want to reveal
             int y = inputBuff[0] - Y_OFFSET;
             int x = inputBuff[1] - X_OFFSET;
-//            printf("User wants to reveal tile %c%c %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
 
             if (tileContainsMine(gameState, y, x)) {
                 // They tried to reveal a mine, so store that information in buffer to send
@@ -178,7 +176,6 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
                 // No mine at location, send information about chosen location and recursive surroundings if needed.
                 int surrounding[NUM_TILES_Y][NUM_TILES_X] = {{0}};
                 getSurrounding(gameState, surrounding, x, y, socketID, outputBuff);
-//                printf("y:%c x:%c adjacent:%d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].adjacentMines);
                 // Send end of message so client knows to stop receiving
                 sprintf(outputBuff, END_OF_MESSAGE);
             }
@@ -191,7 +188,6 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
             // Get the coordinates they want to place a mine at
             int y = inputBuff[0] - Y_OFFSET;
             int x = inputBuff[1] - X_OFFSET;
-//            printf("User wants to place flag at %d%d %d\n", y + Y_OFFSET, x + X_OFFSET, gameState->tiles[y][x].isMine);
 
             // If there is a mine at this location and they haven't already revealed it
             if (tileContainsMine(gameState, y, x) && !gameState->tiles[y][x].revealed) {
@@ -554,7 +550,7 @@ Player *getPlayer(char *name) {
  * @param socketID the ID of the socket that the user has connected on
  */
 void *runThread(void *arg) {
-
+    // Get socket id as given from main process
     int socketID = *(int *) arg;
     // Boolean to keep track of whether this thread should continue to run
     bool running = true;
@@ -667,7 +663,6 @@ void setupPlayers() {
 
     fclose(file);
 
-    // TODO this could probably be improved but is ok for now
     // Store these players in the leaderboard struct
     for (currentPlayer = 0; currentPlayer < MAX_USERS; ++currentPlayer) {
         leaderBoard.players[currentPlayer] = &players[currentPlayer];
@@ -678,21 +673,17 @@ void sig_handler(int signo) {
     if (signo == SIGINT) {
         printf("Received CTRL-C\n");
         serverRunning = false;
-        free(&leaderBoard);
     }
 
     signal(signo, SIG_DFL);
     raise(signo);
 }
 
+
+
 int main(int argc, char *argv[]) {
     // Set up SIGINT
-    if (signal(SIGINT, sig_handler) == SIG_ERR) {
-//        printf("Won't catch SIGINT\n");
-    }
-
-    /* Thread and thread attributes */
-    pthread_t *client_thread = malloc(sizeof(pthread_t));
+    signal(SIGINT, sig_handler);
 
     int sockfd, new_fd;  /* listen on sock_fd, new connection on new_fd */
     struct sockaddr_in my_addr;    /* my address information */
@@ -758,6 +749,8 @@ int main(int argc, char *argv[]) {
             continue;
         }
         printf("server: got connection from %s\n", inet_ntoa(their_addr.sin_addr));
+
+        pthread_t *client_thread = malloc(sizeof(pthread_t));
 
         // Create a thread to accept client
         pthread_attr_t attr;
