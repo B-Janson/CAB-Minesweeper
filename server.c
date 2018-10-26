@@ -671,7 +671,7 @@ void setupPlayers() {
 
 void sig_handler(int signo) {
     if (signo == SIGINT) {
-        printf("Received CTRL-C\n");
+        printf("Exiting Server.\n");
         serverRunning = false;
     }
 
