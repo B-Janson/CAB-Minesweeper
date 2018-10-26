@@ -304,6 +304,18 @@ void startGame(int socketID, char inputBuff[], char outputBuff[]) {
                         gameState->tiles[y][x].isMine = true;
                         gameState->tiles[y][x].revealed = true;
                         printf("Congratulations you have won!\n");
+                        receiveString(socketID, outputBuff);
+                        while (strncmp(outputBuff, END_OF_MESSAGE, MAXDATASIZE) != 0) {
+                            // Get the x and y location explicitly from the server and update based on what it says
+                            int x = outputBuff[0] - '0';
+                            int y = outputBuff[1] - '0';
+                            int adjacent = outputBuff[2] - '0';
+
+                            gameState->tiles[y][x].adjacentMines = adjacent;
+
+                            // Keep receiving until END_OF_MESSAGE received
+                            receiveString(socketID, outputBuff);
+                        }
                         showBoard();
                         playing = false;
                     } else {
@@ -436,6 +448,5 @@ int main(int argc, char *argv[]) {
 
     // Close connection
     close(socketID);
-
     return 0;
 }

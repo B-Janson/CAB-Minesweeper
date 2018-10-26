@@ -16,6 +16,7 @@
 
 #include "constants.h"
 
+
 /**
  * LeaderBoard struct to store all server information about scores.
  */
@@ -26,6 +27,10 @@ LeaderBoard leaderBoard;
  */
 bool serverRunning;
 
+/**
+ * Mutex lock to allow synchronisation of access to rand
+ */
+pthread_mutex_t randLock;
 
 /**
  * Receive input from client. Will sit and wait until receives communication.
@@ -198,6 +203,18 @@ void handleGame(int socketID, char inputBuff[], Player *curr_player) {
                 if (gameState->remainingMines == 0) {
                     // Store win message in buffer to send
                     sprintf(inputBuff, WIN_MESSAGE);
+                    sendString(socketID, inputBuff);
+
+                    for (int i = 0; i < NUM_TILES_Y; ++i) {
+        				for (int j = 0; j < NUM_TILES_X; ++j) {
+        					if (!gameState->tiles[i][j].revealed) {
+                    			sprintf(inputBuff, "%d%d%d", j, i, gameState->tiles[j][i].adjacentMines);
+                    			sendString(socketID, inputBuff);
+                    			gameState->tiles[i][j].revealed = true;
+                    		}
+                    	}
+                    }
+                    sprintf(inputBuff, END_OF_MESSAGE);
                     // Stop the game
                     playing = false;
                     // Calculate the score
@@ -320,8 +337,8 @@ void placeMines(GameState *gameState) {
     for (int i = 0; i < NUM_MINES; ++i) {
         int x, y;
         do {
-            x = rand() % NUM_TILES_X;
-            y = rand() % NUM_TILES_Y;
+            x = getRandTilePositonX();
+            y = getRandTilePositonY();
         } while (tileContainsMine(gameState, x, y));
         // place mine at x, y
         gameState->tiles[x][y].isMine = true;
@@ -672,6 +689,8 @@ void setupPlayers() {
 void sig_handler(int signo) {
     if (signo == SIGINT) {
         printf("Exiting Server.\n");
+        // Close all threads and destroy all mutexes and semaphores here
+        sleep(2);
         serverRunning = false;
     }
 
@@ -740,6 +759,9 @@ int main(int argc, char *argv[]) {
 
     serverRunning = true;
 
+    // Initialise the mutex for the randLock
+    pthread_mutex_init(&randLock, NULL);
+
     /* repeat: accept, send, close the connection */
     /* for every accepted connection, use a separate process or thread to serve it */
     while (serverRunning) {  /* main accept() loop */
@@ -762,4 +784,26 @@ int main(int argc, char *argv[]) {
     printf("Exited cleanly\n");
 
     return 0;
+}
+
+/**
+ * Locks the rand function and creates the random x position of the bomb and unlocks the rand function
+ * @return x position
+ */
+int getRandTilePositonX() {
+    pthread_mutex_lock(&randLock);
+    int pos = rand() % NUM_TILES_X;
+    pthread_mutex_unlock(&randLock);
+    return pos;
+}
+
+/**
+ * Locks the rand function and creates the random y position of the bomb and unlocks the rand function
+ * @return y position
+ */
+int getRandTilePositonY() {
+    pthread_mutex_lock(&randLock);
+    int pos = rand() % NUM_TILES_Y;
+    pthread_mutex_unlock(&randLock);
+    return pos;
 }

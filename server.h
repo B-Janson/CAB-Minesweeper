@@ -33,5 +33,9 @@ void calculateAdjacent(GameState *gameState);
 
 int* getAdjacentTiles(int y, int x);
 
+int getRandTilePositonX();
+
+int getRandTilePositonY();
+
 #endif
 
